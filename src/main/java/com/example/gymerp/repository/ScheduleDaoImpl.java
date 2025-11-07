@@ -77,7 +77,7 @@ public class ScheduleDaoImpl implements ScheduleDao {
 	}
 	
 	
-// ----------------------- 추가 ---------------------------------------------
+
 	// ★ 겹침 방지 INSERT 호출
 	@Override
 	public int insertIfNoOverlap(ScheduleDto dto) {
@@ -90,6 +90,14 @@ public class ScheduleDaoImpl implements ScheduleDao {
 	public int updateIfNoOverlap(ScheduleDto schedule) {
 	    return session.update("ScheduleMapper.updateIfNoOverlap", schedule);
 	}
+
+	
+	
+// ----------------------- 추가 ---------------------------------------------
+	// (PT일 경우) 시간 겹침 + 회원권 기간 체크까지 통과해야 UPDATE 됨.
+	 public int updateIfNoOverlapAndVoucherOK(ScheduleDto dto) {
+	        return session.update("ScheduleMapper.updateIfNoOverlapAndVoucherOK", dto);
+	    }
 //---------------------------------------------------------------------------
 
 }

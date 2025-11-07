@@ -189,32 +189,41 @@ public class ScheduleServiceImpl implements ScheduleService {
 	    // 6) 여기까지 오면 SCHEDULE/REGISTRATION/PT_LOG(소비) 모두 정상 반영됨
 	    return inserted; // 보통 1
 	}
+// ----------------------- 수정 -------------------------------------------------------------------------------------------------
 
 	// 일정 수정
 	@Transactional
 	@Override
 	public int updateSchedule(ScheduleDto schedule) {
-		 if (schedule == null) throw new IllegalArgumentException("요청 데이터가 없습니다.");
+	    if (schedule == null) throw new IllegalArgumentException("요청 데이터가 없습니다.");
 
-		    // PT는 여전히 회원 필수(정책 유지)
-		    if ("SCHEDULE-PT".equalsIgnoreCase(schedule.getCodeBid()) && schedule.getMemNum() == null) {
-		        throw new IllegalStateException("PT 일정은 회원(memNum)이 필요합니다.");
-		    }
+	    final boolean isPT = "SCHEDULE-PT".equalsIgnoreCase(schedule.getCodeBid()); // ★ 먼저 선언
 
-		    // 시간 겹침 금지 업데이트
-		    int updated = scheduleDao.updateIfNoOverlap(schedule);
-		    if (updated == 0) {
-		        throw new IllegalStateException("해당 트레이너의 같은 시간대에 이미 다른 일정이 있어 수정할 수 없습니다.");
-		    }
+	    // PT는 회원 필수
+	    if (isPT && schedule.getMemNum() == null) {
+	        throw new IllegalStateException("PT 일정은 회원이 필요합니다.");
+	    }
 
-		    // ⚠️ (선택) PT에서 memNum을 바꾸는 경우 REGISTRATION/LOG 처리 정책 필요
-		    //  - 단순 시간 변경: 위로 충분
-		    //  - memNum 변경/코드 전환 등은 별도 비즈니스 규칙에 맞춰 후속 로직 추가
+	    // 시간 겹침(공통) + (PT이면) 회원권 기간 체크까지
+	    int updated = isPT
+	        ? scheduleDao.updateIfNoOverlapAndVoucherOK(schedule)  // ★ 새 쿼리
+	        : scheduleDao.updateIfNoOverlap(schedule);             // 기존 쿼리
 
-		    System.out.println("[일정 수정 완료] shNum=" + schedule.getShNum());
-		    return updated;
+	    if (updated == 0) {
+	        // PT는 '겹침 또는 회원권 기간 벗어남' 둘 다 가능성
+	        String msg = isPT
+	            ? "겹치거나 회원권 기간을 벗어나 수정할 수 없습니다."
+	            : "해당 트레이너의 같은 시간대에 이미 다른 일정이 있어 수정할 수 없습니다.";
+	        throw new IllegalStateException(msg);
+	    }
+
+	    // (선택) PT에서 memNum 변경 시 REGISTRATION/LOG 전환 로직을 여기에 추가 가능
+	    // - 시간만 변경이면 추가 처리 없음
+
+	    System.out.println("[일정 수정 완료] shNum=" + schedule.getShNum());
+	    return updated;
 	}
-	
+
 // ----------------------- 추가 -------------------------------------------------------------------------------------------------
 
 	// 일정 삭제
