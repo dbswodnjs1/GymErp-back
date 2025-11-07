@@ -103,7 +103,7 @@ public class SalesServiceController {
         params.put("startRow", startRow);
         params.put("endRow", endRow);
 
-        List<SalesService> list = salesServiceService.getPagedSalesServices(params);
+        List<Map<String, Object>> list = salesServiceService.getPagedSalesServices(params);
         int totalCount = salesServiceService.getSalesServiceCount(params);
 
         Map<String, Object> result = new HashMap<>();
