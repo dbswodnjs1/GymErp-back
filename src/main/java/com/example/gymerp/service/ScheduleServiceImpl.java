@@ -129,7 +129,7 @@ public class ScheduleServiceImpl implements ScheduleService {
 	    // 3) PT 일정은 반드시 회원 지정이 필요
 	    if (schedule.getMemNum() == null) {
 	        // 프론트에서 사용자에게 바로 보여줄 에러 메시지
-	        throw new IllegalStateException("PT 예약에는 회원(memNum)이 필요합니다.");
+	        throw new IllegalStateException("PT 예약에는 회원이 필요합니다.");
 	    }
 
 	    // (디버깅/감사 로그용) 현재 회원의 회원권/잔여PT 상태를 먼저 찍어둔다.
