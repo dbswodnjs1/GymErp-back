@@ -6,34 +6,42 @@ import com.example.gymerp.dto.EmpDto;
 public interface EmpService {
 	
 	// 전체 직원 목록 조회
-    List<EmpDto> getAllEmp();
+    public List<EmpDto> getAllEmp();
     
     // 직원 1명 조회
-    EmpDto getEmpByNum(int empNum);
+    public EmpDto getEmpByNum(int empNum);
     
     // 직원 등록
-    int insertEmp(EmpDto dto);
+    public int insertEmp(EmpDto dto);
     
     // 직원 정보 수정
-    int updateEmp(EmpDto dto);
+    public int updateEmp(EmpDto dto);
     
     // 직원 삭제 
-    int deleteEmp(EmpDto dto);
+    public int deleteEmp(EmpDto dto);
     
     // 직원 검색
-    List<EmpDto> searchEmp(String keyword, String filter);
+    public List<EmpDto> searchEmp(String keyword, String filter);
     
     // 로그인 (이메일 + 비밀번호)
-    EmpDto login(String email, String password);
+    public EmpDto login(String email, String password);
     
     // 비밀번호 변경 (선택)
-    void updatePassword(int empNum, String currentPassword, String newPassword);
+    public void updatePassword(int empNum, String currentPassword, String newPassword);
+    
     // 직원 검색 + 페이징
-    List<EmpDto> getEmpListPaged(String type, String keyword, int start, int end);
+    public List<EmpDto> getEmpListPaged(String type, String keyword, int start, int end);
 
     // 직원 총 개수
-    int getTotalCount(String type, String keyword);
+    public int getTotalCount(String type, String keyword);
     
     // 프로필이미지
-    void updateProfileImage(int empNum, String fileName);
+    public void updateProfileImage(int empNum, String fileName);
+    
+    // 상태 필터: ACTIVE(재직) | RESIGNED(퇴사) | ALL(전체)
+    public List<EmpDto> getEmpListPaged(String type, String keyword, String status, int start, int end);
+    public int getTotalCount(String type, String keyword, String status);
+    
+    // 퇴사 처리(소프트 삭제)
+    public void resign(int empNum, String reason);
 }

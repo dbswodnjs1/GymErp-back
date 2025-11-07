@@ -7,54 +7,49 @@ import org.apache.ibatis.annotations.Param;
 import com.example.gymerp.dto.EmpDto;
 
 public interface EmpDao {
-	// 전체 직원 목록 조회
-	List<EmpDto> getAllEmp();
 	
-	// 직원 1명 조회
-	EmpDto getEmpByNum(@Param("empNum") int empNum);
-	
-	// 직원 등록
-	int insertEmp(EmpDto dto);
-	
-	// 직원 정보 수정
-	int updateEmp(EmpDto dto);
-	
-	// 직원 삭제 
-	int deleteEmp(EmpDto dto);
-	
-	// 직원 검색
-	List<EmpDto> searchEmp(
-			@Param("keyword") String keyword, 
-			@Param("filter") String filter);
-	
-	// 로그인/인증 전용
-	EmpDto selectAuthByEmail(String email);
-	String selectPasswordHashByEmpNum(int empNum);
-	int updatePassword(int empNum, String hashed);
+    List<EmpDto> getAllEmp();
+    EmpDto getEmpByNum(@Param("empNum") int empNum);
+    int insertEmp(EmpDto dto);
+    int updateEmp(EmpDto dto);
+    int deleteEmp(EmpDto dto);
 
-	// 직원 검색 + 페이징
-	List<EmpDto> getEmpListPaged(
-	    @Param("type") String type,
-	    @Param("keyword") String keyword,
-	    @Param("start") int start,
-	    @Param("end") int end
-	);
+    List<EmpDto> searchEmp(@Param("keyword") String keyword,
+                           @Param("filter") String filter);
 
-	// 직원 총 개수
-	int getTotalCount(
-	    @Param("type") String type,
-	    @Param("keyword") String keyword
-	);
-	
-	// 프로필이미지 업로드
-	void updateProfileImage(int empNum, String fileName);
+    EmpDto selectAuthByEmail(String email);
+    String selectPasswordHashByEmpNum(int empNum);
+    int updatePassword(@Param("empNum") int empNum, @Param("hashed") String hashed);
 
-	
-	/** 이용내역 DB 관련 내용입니다.*/
-	
-	// 직원 이름 단건 조회 (로그용: empNum → empName 매핑)
+    //  status 포함
+    List<EmpDto> getEmpListPaged(@Param("type") String type,
+                                 @Param("keyword") String keyword,
+                                 @Param("status") String status,
+                                 @Param("start") int start,
+                                 @Param("end") int end);
+
+    int getTotalCount(@Param("type") String type,
+                      @Param("keyword") String keyword,
+                      @Param("status") String status);
+    
+    
+    // 구버전(호환용): 컨트롤러가 아직 status 안 넘길 때 대비
+    List<EmpDto> getEmpListPaged(@Param("type") String type,
+                                 @Param("keyword") String keyword,
+                                 @Param("start") int start,
+                                 @Param("end") int end);
+    
+    int getTotalCount(@Param("type") String type,
+            @Param("keyword") String keyword);
+    
+    
+    void updateProfileImage(int empNum, String fileName);
+
     String selectEmployeeNameById(int empNum);
-
-    // 직원 존재 여부 확인 (판매 등록 시 유효성 검증용) 
     int checkEmployeeExists(int empNum);
+
+    int existsByEmail(String email);
+    
+    // 퇴사 처리
+    int markResigned(@Param("empNum") int empNum, @Param("reason") String reason);
 }

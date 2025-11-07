@@ -78,7 +78,6 @@
             actualAmount  = #{actualAmount},
             updatedAt     = SYSDATE
         WHERE serviceSalesId = #{serviceSalesId}
-          AND serviceType = #{serviceType}
           AND status = 'ACTIVE'
     </update>
 
@@ -107,18 +106,18 @@
                 AND ss.createdAt &lt;= TO_DATE(#{endDate} || ' 23:59:59', 'YYYY-MM-DD HH24:MI:SS')
             </if>
 
-            <!-- ② 품목명 (검색창 입력 기반, 실시간 LIKE 검색 / 대소문자 무시) -->
+            <!-- ② 품목명 (sales_service.serviceName 기준) -->
             <if test="serviceNameKeyword != null and serviceNameKeyword != ''">
-                AND UPPER(s.serviceName) LIKE '%' || UPPER(#{serviceNameKeyword}) || '%'
+                AND UPPER(ss.serviceName) LIKE '%' || UPPER(#{serviceNameKeyword}) || '%'
             </if>
 
             <!-- ③ 회원 -->
-            <if test="memNum != null">
+            <if test="memNum != null and memNum != ''">
                 AND ss.memNum = #{memNum}
             </if>
 
             <!-- ④ 직원 -->
-            <if test="empNum != null">
+            <if test="empNum != null and empNum != ''">
                 AND ss.empNum = #{empNum}
             </if>
 
@@ -130,8 +129,7 @@
     <select id="selectSalesServiceCount" parameterType="map" resultType="int">
         SELECT COUNT(1)
         FROM sales_service ss
-        JOIN service  s ON ss.serviceId = s.serviceId
-        JOIN employee e ON ss.empNum    = e.empNum
+        JOIN employee e ON ss.empNum = e.empNum
         <include refid="baseWhereService"/>
     </select>
 
@@ -143,7 +141,7 @@
             SELECT
                 ss.serviceSalesId,
                 ss.serviceId,
-                s.serviceName AS serviceName,
+                ss.serviceName,
                 ss.serviceType,
                 ss.empNum,
                 e.empEmail AS empEmail,
@@ -158,8 +156,7 @@
                 ss.updatedAt,
                 ROW_NUMBER() OVER(ORDER BY ss.serviceSalesId DESC) AS rn
             FROM sales_service ss
-            JOIN service  s ON ss.serviceId = s.serviceId
-            JOIN employee e ON ss.empNum    = e.empNum
+            JOIN employee e ON ss.empNum = e.empNum
             <include refid="baseWhereService"/>
         )
         WHERE rn BETWEEN #{startRow} AND #{endRow}

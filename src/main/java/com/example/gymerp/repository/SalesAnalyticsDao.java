@@ -2,93 +2,97 @@ package com.example.gymerp.repository;
 
 import java.util.List;
 import java.util.Map;
-
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
 public interface SalesAnalyticsDao {
 
     /* =========================================================
+       [전체 매출 그래프]
+       - Mapper: selectTotalSalesChart
+       - 기준: 서비스 + 실물 상품 매출 합산
+       - 필터: 없음 (전체기간 기준)
+       - 출력: label(SERVICE/ITEM), total_sales
+    ========================================================= */
+    List<Map<String, Object>> selectTotalSalesChart();
+
+
+    /* =========================================================
        [서비스 매출 그래프]
        - Mapper: selectServiceSalesChart
-       - 필터: 기간, 품목(최대 3개), 회원, 직원
-       - 기본 출력: label(품목명 or 타입), total_sales
-       - 모든 필터 미선택 시: 올해 전체 자동 적용
+       - 기준: sales_service
+       - 필터: 없음 (전체기간 기준)
+       - 출력: label(PT/VOUCHER), total_sales
     ========================================================= */
-    List<Map<String, Object>> selectServiceSalesChart(Map<String, Object> params);
+    List<Map<String, Object>> selectServiceSalesChart();
 
 
     /* =========================================================
        [실물 상품 매출 그래프]
        - Mapper: selectItemSalesChart
-       - 필터: 기간, 품목(최대 3개), 직원
-       - 기본 출력: label(상품명 or 타입), total_sales
-       - 모든 필터 미선택 시: 올해 전체 자동 적용
+       - 기준: sales_item
+       - 필터: 없음 (전체기간 기준)
+       - 출력: label(CLOTHES/DRINK/SUPPLEMENTS), total_sales
     ========================================================= */
-    List<Map<String, Object>> selectItemSalesChart(Map<String, Object> params);
-    
-    
+    List<Map<String, Object>> selectItemSalesChart();
+
+
     /* =========================================================
-	    [트레이너 실적 그래프]
-	    - Mapper: selectTrainerPerformanceChart
-	    - 기준: PT 이용내역 (status = '소비')
-	    - 필터: 기간, 직원
-	    - 직원 미선택 시: 실적 TOP3
-	    - 기간 미선택 시: 저번 달
-	 ========================================================= */
-	 List<Map<String, Object>> selectTrainerPerformanceChart(Map<String, Object> params);
-	 
-	 
-	 /* =========================================================
-	     [트레이너 실적 TOP3 조회]
-	     - Mapper: selectTop3TrainerPerformance
-	     - 기간 내 PT 소비 횟수 상위 3명
-	     - 기준: pt_log (status='소비')
-	  ========================================================= */
-	  List<Map<String, Object>> selectTop3TrainerPerformance(Map<String, Object> params);
-	  
-	  
-	  /* =========================================================
-	      [AI 회원수 예측 결과 저장]
-	      - Mapper: insertAiMemberPrediction
-	      - Flask 예측 결과를 DB에 기록
-	      - 테이블: ai_member_prediction
-	   ========================================================= */
-	   int insertAiMemberPrediction(Map<String, Object> data);
-	
-	
-	   /* =========================================================
-	      [AI 회원수 예측 결과 조회]
-	      - Mapper: selectAiMemberPredictions
-	      - 기준: 올해(YYYY)
-	      - 출력: 월(month), 예측 회원수(predictedCount)
-	   ========================================================= */
-	   List<Map<String, Object>> selectAiMemberPredictions();
+       [트레이너 실적 그래프]
+       - Mapper: selectTrainerPerformanceChart
+       - 기준: sales_service + employee
+       - 필터: 없음 (지난달 자동)
+       - 출력: label(직원명), total_sales (상위 3명)
+    ========================================================= */
+    List<Map<String, Object>> selectTrainerPerformanceChart();
 
 
-	   /* =========================================================
-	      [AI 매출 예측용 과거 데이터 조회]
-	      - Mapper: selectPastSalesForAi
-	      - 기준: 최근 3년치 매출 데이터 (서비스 + 상품)
-	      - 출력: 연도(year), 월(month), 매출액(total_sales)
-	   ========================================================= */
-	   List<Map<String, Object>> selectPastSalesForAi();
+    /* =========================================================
+       [AI 회원수 예측 결과 저장]
+    ========================================================= */
+    int insertAiMemberPrediction(Map<String, Object> data);
 
 
-	   /* =========================================================
-	      [AI 매출 예측 결과 저장]
-	      - Mapper: insertAiSalesPrediction
-	      - Flask에서 예측된 매출 데이터를 DB에 기록
-	      - 테이블: ai_sales_prediction
-	   ========================================================= */
-	   int insertAiSalesPrediction(Map<String, Object> data);
+    /* =========================================================
+       [AI 회원수 예측 결과 조회]
+    ========================================================= */
+    List<Map<String, Object>> selectAiMemberPredictions();
 
 
-	   /* =========================================================
-	      [AI 매출 예측 결과 조회]
-	      - Mapper: selectAiSalesPredictions
-	      - 기준: 작년 / 올해 / 내년
-	      - 출력: 연도(year), 월(month), 예측 매출(predictedSales)
-	   ========================================================= */
-	   List<Map<String, Object>> selectAiSalesPredictions();
+    /* =========================================================
+       [AI 매출 예측용 과거 데이터 조회]
+    ========================================================= */
+    List<Map<String, Object>> selectPastSalesForAi();
+
+
+    /* =========================================================
+       [AI 매출 예측 결과 저장]
+    ========================================================= */
+    int insertAiSalesPrediction(Map<String, Object> data);
+
+
+    /* =========================================================
+       [AI 매출 예측 결과 조회]
+    ========================================================= */
+    List<Map<String, Object>> selectAiSalesPredictions();
+
+
+    /* =========================================================
+       [AI 회원 예측용 월별 회원 수 집계]
+       - Flask 학습용 데이터 생성용
+    ========================================================= */
+    List<Map<String, Object>> selectMemberMonthlyCount(Map<String, Object> params);
+    
+    
+    /**
+     * ✅ 제작년~올해 월별 매출 조회
+     * - 실제 매출 (서비스 + 실물상품)
+     */
+    List<Map<String, Object>> selectActualSales3Years();
+
+    /**
+     * ✅ 작년~내년 월별 매출 조회 (예측 포함)
+     * - 실제 매출 + 예측 매출 결합
+     */
+    List<Map<String, Object>> selectSalesWithPrediction();
 }

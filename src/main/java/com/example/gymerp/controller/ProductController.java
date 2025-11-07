@@ -2,6 +2,7 @@ package com.example.gymerp.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -52,12 +53,10 @@ public class ProductController {
 	
 	//실물 상품 수정
 	@PutMapping("/product/{productId}")
-	public ProductDto updateProduct(@RequestBody ProductDto dto, @PathVariable int productId) {
+	public void updateProduct(@ModelAttribute ProductDto dto, @PathVariable int productId) {
 		dto.setProductId(productId);
 		//path variable 이 없는 방식(dto 에 product id 를 담아서 보내주는 방식)을 시도해보고 된다면 path variable 지우기
 		productService.modifyProduct(dto);
-		
-		return dto;
 	}
 	
 	//실물 상품 상세정보 조회

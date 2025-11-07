@@ -26,9 +26,14 @@ public class ServiceController {
 	
 	//상품 목록 조회
 	@GetMapping("/service")
-	public ServiceListResponse getServiceList(@RequestParam(defaultValue = "1") int pageNum, ServiceDto dto) {
+	public ServiceListResponse getServiceList(
+			@RequestParam(defaultValue = "1") int pageNum, 
+			ServiceDto dto,
+			@RequestParam(defaultValue = "codeBName") String sortBy,
+			@RequestParam(defaultValue = "ASC") String direction
+	) {
 		
-		return serviceService.getServices(pageNum, dto);
+		return serviceService.getServices(pageNum, dto, sortBy, direction);
 	}
 	
 	//서비스 상품 등록

@@ -41,6 +41,16 @@ public interface ScheduleDao {
     /* 일정 삭제 */
     public int delete(@Param("shNum") int shNum);
 
+
+    // 특정 직원의 휴가가 지정 구간과 겹치는지 카운트
+    int countVacationOverlap(long empNum, LocalDateTime startTime, LocalDateTime endTime);
+    
+    // 자기자신 shNum 을 제외하고 겹치는지 카운트 
+    int countVacationOverlapExcludingSelf(long empNum, LocalDateTime startTime, LocalDateTime endTime, long shNum);
+
+
+ // ----------------------- 추가 -------------------------
+
     int insertIfNoOverlap(ScheduleDto dto);     
 
     int updateIfNoOverlap(ScheduleDto schedule);

@@ -34,6 +34,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource())) // 🔹 React CORS 설정
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(SWAGGER).permitAll() // Swagger 허용
+                .requestMatchers("/upload/**").permitAll()
                 .requestMatchers("/v1/emp/login", "/v1/emp/logout", "/v1/member/**", "/v1/sales/**").permitAll() // 로그인 허용
 
                 .requestMatchers("/v1/pt/**").permitAll()     // Swagger 테스트용 PT API 허용
@@ -70,8 +71,11 @@ public class SecurityConfig {
 
         // Vite 개발 서버
         // Swagger (Spring 내부)
+
         config.setAllowedOrigins(List.of("http://localhost:5174","http://localhost:9000")); 
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+
 
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

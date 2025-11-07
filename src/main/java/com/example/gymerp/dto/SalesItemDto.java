@@ -4,19 +4,16 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.apache.ibatis.type.Alias;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Alias("SalesItemDto")
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
 public class SalesItemDto {
 
-    /** SALES_ITEM */
     private Long itemSalesId;        // 상품 판매 ID (PK)         
     private int productId;          // 실물 상품 고유번호 (FK)     
     private int empNum;             // 직원 고유번호 (FK)          
@@ -31,6 +28,8 @@ public class SalesItemDto {
     private String status;           // 상태 (기본값 'ACTIVE')       
 
     private LocalDateTime createdAt; // 등록일                   
-    private LocalDateTime updatedAt; // 수정일         
+    private LocalDateTime updatedAt; // 수정일
+    
+    private String empEmail;
     
 }

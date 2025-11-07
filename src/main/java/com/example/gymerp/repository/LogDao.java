@@ -4,6 +4,8 @@ import com.example.gymerp.dto.PtLogDto;
 import com.example.gymerp.dto.VoucherLogDto;
 import org.springframework.stereotype.Repository;
 
+import java.util.Map;
+
 @Repository
 public interface LogDao {
 
@@ -32,6 +34,10 @@ public interface LogDao {
     // 회원권 전체환불 (이전 상태로 롤백)
     int rollbackVoucherLog(VoucherLogDto dto);
 
+    // 회원권 연장 (기존 endDate + N일 추가)
+    int extendVoucherPeriod(Map<String, Object> params);
+
+
 
     // ===============================
     // [PT 로그 관련]
@@ -54,17 +60,25 @@ public interface LogDao {
 
     // 특정 판매건의 PT 로그 찾기 (usageId 기준)
     PtLogDto selectPtLogByUsageId(long usageId);
-    
-	// ===============================
-	// [PT 예약 / 취소 관련]
-	// ===============================
-	
-	// PT 예약 시 (소비 로그 등록)
-	int insertPtConsumeLog(PtLogDto dto);
-	
-	// PT 예약 취소 시 (복구 로그 등록)
-	int insertPtCancelLog(PtLogDto dto);
-	
-	// PT 등록번호(regId)로 기존 소비 로그 조회
-	PtLogDto selectPtLogByRegId(long regId);
+
+    // 판매내역(salesId) 기준으로 PT 충전 로그 조회
+    PtLogDto selectPtLogBySalesId(long salesId);
+
+    // 기존 PT 충전 로그의 countChange 수정 (연장 처리)
+    int updatePtChargeCount(PtLogDto dto);
+
+
+
+    // ===============================
+    // [PT 예약 / 취소 관련]
+    // ===============================
+
+    // PT 예약 시 (소비 로그 등록)
+    int insertPtConsumeLog(PtLogDto dto);
+
+    // PT 예약 취소 시 (복구 로그 등록)
+    int insertPtCancelLog(PtLogDto dto);
+
+    // PT 등록번호(regId)로 기존 소비 로그 조회
+    PtLogDto selectPtLogByRegId(long regId);
 }

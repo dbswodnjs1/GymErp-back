@@ -87,13 +87,13 @@
 		SET codeBId=#{codeBId}, name=#{name}, price=#{price}, isActive=#{isActive},
 			updatedAt=SYSDATE, note=#{note}
 			
-			<!-- <if test="profileImage != null">, profileImage=#{profileImage}</if> -->
+			<if test="profileImage != null">, profileImage=#{profileImage}</if>
 			
 		WHERE productId=#{productId}
 	</update>
 	
 	<select id="getByNum" parameterType="int" resultType="productDto">
-		SELECT pr.codeBId, cb.name AS codeBName, pr.createdAt, pr.isActive, pr.name, pr.updatedAt, pr.profileImage, pr.note
+		SELECT pr.codeBId, cb.name AS codeBName, pr.createdAt, pr.isActive, pr.name, pr.updatedAt, pr.profileImage, pr.note, pr.price
 		FROM product pr
 		LEFT JOIN codeB cb ON pr.codeBId = cb.codeBId 
 		WHERE productId=#{productId}

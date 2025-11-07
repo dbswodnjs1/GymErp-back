@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.gymerp.dto.SalesService;
@@ -14,6 +15,12 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/v1")
 @RequiredArgsConstructor
+@ConditionalOnProperty(     
+    prefix = "feature",
+    name = "service-sale",
+    havingValue = "true",
+    matchIfMissing = false
+)
 public class SalesServiceController {
 
     private final SalesServiceService salesServiceService;
@@ -35,7 +42,6 @@ public class SalesServiceController {
         return salesServiceService.getSalesServiceById(id);
     }
 
-
     /* ===============================
        [2. 등록]
     =============================== */
@@ -43,12 +49,8 @@ public class SalesServiceController {
     @PostMapping("/sales/services")
     public Map<String, Object> createSalesService(@RequestBody SalesService salesService) {
         int result = salesServiceService.createSalesService(salesService);
-        return Map.of(
-            "result", result,
-            "message", "판매 내역이 등록되었습니다."
-        );
+        return Map.of("result", result, "message", "판매 내역이 등록되었습니다.");
     }
-
 
     /* ===============================
        [3. 수정]
@@ -58,13 +60,10 @@ public class SalesServiceController {
     public Map<String, Object> updateSalesService(@PathVariable Long id,
                                                   @RequestBody SalesService salesService) {
         salesService.setServiceSalesId(id);
+        salesService.setStatus("ACTIVE");
         int result = salesServiceService.updateSalesService(salesService);
-        return Map.of(
-            "result", result,
-            "message", "판매 내역이 수정되었습니다."
-        );
+        return Map.of("result", result, "message", "판매 내역이 수정되었습니다.");
     }
-
 
     /* ===============================
        [4. 삭제]
@@ -73,10 +72,7 @@ public class SalesServiceController {
     @DeleteMapping("/sales/services/{id}")
     public Map<String, Object> deleteSalesService(@PathVariable Long id) {
         int result = salesServiceService.deleteSalesService(id);
-        return Map.of(
-            "result", result,
-            "message", "판매 내역이 삭제되었습니다."
-        );
+        return Map.of("result", result, "message", "판매 내역이 삭제되었습니다.");
     }
 
 

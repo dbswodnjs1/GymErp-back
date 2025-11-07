@@ -5,7 +5,7 @@ import com.example.gymerp.dto.ServiceListResponse;
 
 public interface ServiceService {
 
-	public ServiceListResponse getServices(int pageNum, ServiceDto dto);
+	public ServiceListResponse getServices(int pageNum, ServiceDto dto, String sortBy, String direction);
 	public void save(ServiceDto dto);
 	public void modifyService(ServiceDto dto);
 	public ServiceDto getDetail(int serviceId);

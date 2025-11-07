@@ -17,7 +17,7 @@ public class ServiceServiceImpl implements ServiceService{
 	private final ServiceDao serviceDao;
 
 	@Override
-	public ServiceListResponse getServices(int pageNum, ServiceDto dto) {
+	public ServiceListResponse getServices(int pageNum, ServiceDto dto, String sortBy, String direction) {
 		
 		//한 페이지에 몇개씩 표시할 것인지
 		final int PAGE_ROW_COUNT=10;
@@ -47,6 +47,8 @@ public class ServiceServiceImpl implements ServiceService{
 		// startRowNum 과 endRowNum 을 ProductDto 객체에 담아서
 		dto.setStartRowNum(startRowNum);
 		dto.setEndRowNum(endRowNum);
+		dto.setSortBy(sortBy);
+		dto.setDirection(direction);
 		
 		//글 목록 얻어오기 (검색 키워드가 있다면 조건에 맞는 목록만 얻어낸다)
 		List<ServiceDto> list = serviceDao.selectPage(dto);

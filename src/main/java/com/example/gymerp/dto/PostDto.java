@@ -18,4 +18,6 @@ public class PostDto {
     private int postViewCnt;
     private Timestamp postCreatedAt;
     private Timestamp postUpdatedAt;
+    
+    private String writerName;      // EMPLOYEE에서 조인된 이름
 }

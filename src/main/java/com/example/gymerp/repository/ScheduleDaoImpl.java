@@ -100,4 +100,24 @@ public class ScheduleDaoImpl implements ScheduleDao {
 	    }
 //---------------------------------------------------------------------------
 
+
+    @Override
+    public int countVacationOverlap(long empNum, LocalDateTime startTime, LocalDateTime endTime) {
+        Map<String, Object> param = new HashMap<>();
+        param.put("empNum", empNum);
+        param.put("startTime", startTime);
+        param.put("endTime", endTime);
+        return session.selectOne("ScheduleMapper.countVacationOverlap", param);
+    }
+
+    @Override
+    public int countVacationOverlapExcludingSelf(long empNum, LocalDateTime startTime, LocalDateTime endTime, long shNum) {
+        Map<String, Object> param = new HashMap<>();
+        param.put("empNum", empNum);
+        param.put("startTime", startTime);
+        param.put("endTime", endTime);
+        param.put("shNum", shNum);
+        return session.selectOne("ScheduleMapper.countVacationOverlapExcludingSelf", param);
+    }
+    
 }

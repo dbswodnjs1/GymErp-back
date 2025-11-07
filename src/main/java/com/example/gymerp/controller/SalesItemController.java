@@ -16,34 +16,60 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.gymerp.dto.SalesItemDto;
 import com.example.gymerp.service.SalesItemService;
+import com.example.gymerp.service.StockService;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/v1/sales") 
 @RequiredArgsConstructor
 public class SalesItemController {
 
-    private final SalesItemService salesItemService;
+    private static final Logger logger = LoggerFactory.getLogger(SalesItemController.class);
 
-    // 상품 판매 등록
-    @PostMapping("/products") 
-    public ResponseEntity<String> addSalesItem(@RequestBody SalesItemDto salesItem) {
-        
+    private final SalesItemService salesItemService;
+    private final StockService stockService;
+    
+ // 상품 등록
+    @PostMapping("/products")
+    public ResponseEntity<?> addSalesItem(@RequestBody SalesItemDto salesItem) {
         try {
             int result = salesItemService.addSalesItem(salesItem);
-            
             if (result > 0) {
-                return ResponseEntity.status(HttpStatus.CREATED).body("판매 내역이 성공적으로 등록되었습니다.");
+                return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "message", "판매 내역이 성공적으로 등록되었습니다."
+                ));
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("판매 내역 등록에 실패했습니다.");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                    "message", "판매 내역 등록에 실패했습니다."
+                ));
             }
+        } catch (RuntimeException e) {
+            // 재고부족 메시지라면 최대수량 동봉해서 409로 반환
+            if (e.getMessage() != null && e.getMessage().contains("재고가 부족")) {
+                int available = stockService.getStockOne(salesItem.getProductId());
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "message", String.format("입력 가능한 최대 수량은 %d개입니다.", available),
+                    "availableQty", available
+                ));
+            }
+            // 그 외는 500
+            logger.error("판매 내역 등록 중 런타임 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "message", "판매 내역 등록 중 서버 오류가 발생했습니다.",
+                "detail", e.getMessage()
+            ));
         } catch (Exception e) {
-            
-            e.printStackTrace(); 
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("판매 내역 등록 중 서버 오류가 발생했습니다: " + e.getMessage());
+            logger.error("판매 내역 등록 중 심각한 오류 발생", e); // 로거를 사용하여 에러 기록
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "message", "판매 내역 등록 중 서버 오류가 발생했습니다.",
+                "detail", e.getMessage()
+            ));
         }
     }
+
 
     // 상품 판매 전체 목록 조회
     @GetMapping("/products") 

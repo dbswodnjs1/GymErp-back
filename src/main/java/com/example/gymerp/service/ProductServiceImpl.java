@@ -1,14 +1,15 @@
 package com.example.gymerp.service;
 
-import java.io.File;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Value;
+import java.nio.file.Path;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.gymerp.config.FileStorageProperties;
 import com.example.gymerp.dto.ProductDto;
 import com.example.gymerp.dto.ProductListResponse;
 import com.example.gymerp.dto.StockAdjustRequestDto;
@@ -20,13 +21,10 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService{
-	
+
 	private final ProductDao productDao;
 	private final StockService stockService;
-	
-	//업로드된 이미지를 저장할 위치 얻어내기
-	@Value("${file.location}")
-	private String fileLocation;
+	private final FileStorageProperties fileStorageProperties;
 
 	@Override
 	public ProductListResponse getProducts(int pageNum, ProductDto dto, String sortBy, String direction) {
@@ -89,17 +87,15 @@ public class ProductServiceImpl implements ProductService{
 		MultipartFile image = dto.getProfileFile();
 		
 		//만일 업로드된 이미지가 있다면
-		if(!image.isEmpty()) {
+		if(image != null && !image.isEmpty()) {
 			//원본 파일명
 			String orgFileName = image.getOriginalFilename();
 			//이미지의 확장자를 유지하기 위해 뒤에 원본 파일명을 추가한다
 			String saveFileName = UUID.randomUUID().toString()+orgFileName;
 			//저장할 파일의 전체 경로 구성하기
-			String filePath=fileLocation + File.separator + saveFileName;
+			Path targetPath = fileStorageProperties.prepareUploadDir().resolve(saveFileName);
 			try {
-				//업로드된 파일을 저장할 파일 객체 생성
-				File saveFile=new File(filePath);
-				image.transferTo(saveFile);
+				image.transferTo(targetPath.toFile());
 			}catch(Exception e) {
 				e.printStackTrace();
 			}
@@ -111,13 +107,36 @@ public class ProductServiceImpl implements ProductService{
 		
 		//리액트에 등록 시 수량 기본값 0 넣기
 		if(dto.getQuantity() != 0) {
+			request.setDate(dto.getCreatedAt());
 			stockService.adjustProduct(dto.getProductId(), request);
 		}
 		
 	}
 
 	@Override
+	@Transactional
 	public void modifyProduct(ProductDto dto) {
+		
+		//업로드된 이미지가 있는지 읽어와본다
+		MultipartFile image = dto.getProfileFile();
+		
+		//만일 업로드된 이미지가 있다면
+		if(image != null && !image.isEmpty()) {
+			//원본 파일명
+			String orgFileName = image.getOriginalFilename();
+			//이미지의 확장자를 유지하기 위해 뒤에 원본 파일명을 추가한다
+			String saveFileName = UUID.randomUUID().toString()+orgFileName;
+			//저장할 파일의 전체 경로 구성하기
+			Path targetPath = fileStorageProperties.prepareUploadDir().resolve(saveFileName);
+			try {
+				image.transferTo(targetPath.toFile());
+			}catch(Exception e) {
+				e.printStackTrace();
+			}
+			//UserDto 에 저장된 이미지의 이름을 넣어준다
+			dto.setProfileImage(saveFileName);
+		}
+		
 		int rowCount = productDao.update(dto);
 		if(rowCount == 0) {
 			throw new RuntimeException("상품 수정 실패!");

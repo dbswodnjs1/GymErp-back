@@ -22,11 +22,30 @@
 		FROM
 			(SELECT result1.*, ROWNUM AS rnum
 			FROM
-				(SELECT sv.serviceId, sv.name, sv.price, sv.isActive, sv.codeBId, sv.serviceValue, cb.name AS codeBName
+				(SELECT 
+					sv.serviceId, 
+					sv.name, 
+					sv.price, 
+					sv.isActive, 
+					sv.codeBId, 
+					sv.serviceValue, 
+					cb.name AS codeBName
 				FROM service sv
 				LEFT JOIN codeB cb ON sv.codeBId = cb.codeBId
 				<include refid="search"/>
-				ORDER BY sv.codeBId DESC
+				<if test="sortBy != null and sortBy != ''">
+		            ORDER BY
+		            <choose>
+		                <when test="sortBy == 'codeBName'"> cb.name </when>
+		                <when test="sortBy == 'name'"> sv.name </when>
+		                <when test="sortBy == 'price'"> sv.price </when>
+		                <otherwise> sv.serviceId </otherwise>
+		            </choose>
+		            <choose>
+		                <when test="direction == 'DESC'"> DESC </when>
+		                <otherwise> ASC </otherwise>
+		            </choose>
+		        </if>
 				) result1)
 		WHERE rnum BETWEEN #{startRowNum} AND #{endRowNum}
 	</select>

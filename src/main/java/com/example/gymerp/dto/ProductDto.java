@@ -33,7 +33,7 @@ public class ProductDto {
 	private int startRowNum;
 	private int endRowNum;
 	//프로필 이미지 출력을 위한 필드
-	private String ProfileImage;
+	private String profileImage;
 	//검색 키워드를 담기 위한 필드
 	private String keyword;
 	//검색 조건을 담기 위한 필드

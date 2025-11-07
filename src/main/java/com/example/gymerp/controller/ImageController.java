@@ -5,7 +5,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -13,14 +12,19 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
+import com.example.gymerp.config.FileStorageProperties;
+
 import io.swagger.v3.oas.annotations.Hidden;
 
 @Hidden //  Swagger에서 이 컨트롤러 제외
 @Controller
 public class ImageController {
 	
-	@Value("${file.location}")
-	private String fileLocation;
+    private final FileStorageProperties fileStorageProperties;
+
+    public ImageController(FileStorageProperties fileStorageProperties) {
+        this.fileStorageProperties = fileStorageProperties;
+    }
 	
 	
 	/*
@@ -36,10 +40,8 @@ public class ImageController {
 		 *  
 		 *  @PathVariable 어노테이션 
 		 */
-		//이미지의 이름을 이용해서 응답할 이미지가 어디에 있는지 전체 경로를 구성한다. 
-		String filePath=fileLocation + File.separator + name;
-		//File 객체 생성
-		File file=new File(filePath);
+	//이미지의 이름을 이용해서 응답할 이미지가 어디에 있는지 전체 경로를 구성한다. 
+	File file=new File(fileStorageProperties.getUploadDir().resolve(name).toString());
 		//파일이 존재하지 않으면 예외 발생
 		if(!file.exists()) {
 			throw new RuntimeException("file not found!");
@@ -57,5 +59,3 @@ public class ImageController {
 	}
 	
 }
-
-

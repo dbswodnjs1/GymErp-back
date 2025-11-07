@@ -17,67 +17,54 @@ public class SalesAnalyticsController {
     private final SalesAnalyticsService salesAnalyticsService;
 
     /* =========================================================
-       [서비스 매출 그래프]
-       - 필터: 기간, 품목, 회원, 직원
-       - 기간 미선택 시: 올해 전체
-       - 품목 최대 3개까지 OR 조건
-       - 그래프: 원형(PieChart) or 막대(BarChart)
+       [전체 매출 그래프]
+       - 기준: 서비스 + 실물 상품 매출 합산
+       - 필터 없음 (전체기간 자동)
+       - 그래프: 원형(PieChart)
     ========================================================= */
-    @GetMapping("/analytics/sales/service")
-    public List<Map<String, Object>> getServiceSalesChart(
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) List<String> serviceTypes,
-            @RequestParam(required = false) Long memberId,
-            @RequestParam(required = false) Long empId
-    ) {
-        return salesAnalyticsService.getServiceSalesChart(startDate, endDate, serviceTypes, memberId, empId);
+    @GetMapping("/analytics/sales/total")
+    public List<Map<String, Object>> getTotalSalesChart() {
+        return salesAnalyticsService.getTotalSalesChart();
     }
 
+    /* =========================================================
+       [서비스 매출 그래프]
+       - 기준: sales_service
+       - 필터 없음 (전체기간 자동)
+       - 그래프: 원형(PieChart)
+    ========================================================= */
+    @GetMapping("/analytics/sales/service")
+    public List<Map<String, Object>> getServiceSalesChart() {
+        return salesAnalyticsService.getServiceSalesChart();
+    }
 
     /* =========================================================
        [실물 상품 매출 그래프]
-       - 필터: 기간, 품목, 직원
-       - 기간 미선택 시: 올해 전체
-       - 품목 최대 3개까지 OR 조건
-       - 그래프: 원형(PieChart) or 막대(BarChart)
+       - 기준: sales_item
+       - 필터 없음 (전체기간 자동)
+       - 그래프: 원형(PieChart)
     ========================================================= */
     @GetMapping("/analytics/sales/item")
-    public List<Map<String, Object>> getItemSalesChart(
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) List<String> productTypes,
-            @RequestParam(required = false) Long empId
-    ) {
-        return salesAnalyticsService.getItemSalesChart(startDate, endDate, productTypes, empId);
+    public List<Map<String, Object>> getItemSalesChart() {
+        return salesAnalyticsService.getItemSalesChart();
     }
-    
-    
-    /* =========================================================
-	    [트레이너 실적 그래프]
-	    - 기준: PT 이용내역(status='소비')
-	    - 필터: 기간, 직원(최대 3명)
-	    - 기간 미선택 시: 저번 달 전체
-	    - 직원 미선택 시: 실적 TOP3
-	    - 단위 자동 분기: 일 / 주 / 월 / 년
-	    - 그래프: 꺾은선(LineChart)
-	 ========================================================= */
-	 @GetMapping("/analytics/trainer/performance")
-	 public List<Map<String, Object>> getTrainerPerformanceChart(
-	         @RequestParam(required = false) String startDate,
-	         @RequestParam(required = false) String endDate,
-	         @RequestParam(required = false) List<Long> trainerIds
-	 ) {
-	     return salesAnalyticsService.getTrainerPerformanceChart(startDate, endDate, trainerIds);
-	 }
 
+    /* =========================================================
+       [트레이너 실적 그래프]
+       - 기준: PT 이용내역(status='소비')
+       - 필터 없음 (기본 = 저번달 기준)
+       - 그래프: 막대 그래프 (BarChart)
+    ========================================================= */
+    @GetMapping("/analytics/trainer/performance")
+    public List<Map<String, Object>> getTrainerPerformanceChart() {
+        return salesAnalyticsService.getTrainerPerformanceChart();
+    }
 
     /* =========================================================
        [AI 회원수 예측 그래프]
-       - Flask 서버 호출 → 예측 결과 수신 → DB 저장 후 조회 반환
        - 기준: 올해 전체 (1월~12월)
        - 테이블: ai_member_prediction
-       - 그래프: 월별 막대 그래프 (BarChart)
+       - 그래프: 월별 막대그래프 (BarChart)
        - 필터 없음 (자동 호출)
     ========================================================= */
     @GetMapping("/analytics/ai/members")
@@ -85,10 +72,8 @@ public class SalesAnalyticsController {
         return salesAnalyticsService.getAiMemberPredictionChart();
     }
 
-
     /* =========================================================
        [AI 매출 예측 그래프]
-       - Flask 서버 호출 → 예측 결과 수신 → DB 저장 후 조회 반환
        - 기준: 작년 / 올해 / 내년
        - 테이블: ai_sales_prediction
        - 그래프: 꺾은선(LineChart)
@@ -97,5 +82,24 @@ public class SalesAnalyticsController {
     @GetMapping("/analytics/ai/sales")
     public List<Map<String, Object>> getAiSalesPredictionChart() {
         return salesAnalyticsService.getAiSalesPredictionChart();
+    }
+    
+    
+    /**
+     * ✅ [1] 제작년~올해 매출 (3년치 실제 매출)
+     * 예: 2023, 2024, 2025
+     */
+    @GetMapping("/history")
+    public List<Map<String, Object>> getActualSales3Years() {
+        return salesAnalyticsService.getActualSales3Years();
+    }
+
+    /**
+     * ✅ [2] 작년~내년 매출 (예측 포함)
+     * 예: 2024, 2025, 2026(예측)
+     */
+    @GetMapping("/prediction")
+    public List<Map<String, Object>> getSalesWithPrediction() {
+        return salesAnalyticsService.getSalesWithPrediction();
     }
 }

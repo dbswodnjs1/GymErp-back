@@ -30,6 +30,9 @@ public interface LogService {
     // 회원권 전체환불 (이전 상태로 롤백)
     void rollbackVoucherLog(VoucherLogDto dto);
 
+    // 회원권 연장 (endDate + N일)
+    void extendVoucherPeriod(long memNum, int extendDays);
+
 
 
     /* ===============================
@@ -53,4 +56,10 @@ public interface LogService {
 
     // 특정 판매건의 PT 로그 조회 (refundId 기준)
     PtLogDto getPtLogByRefundId(long refundId);
+
+    // 특정 판매내역(salesId) 기준 PT 로그 조회
+    PtLogDto getPtLogBySalesId(long salesId);
+
+    // 기존 PT 충전 로그의 countChange 수정 (연장 처리)
+    void updatePtChargeCount(PtLogDto dto);
 }

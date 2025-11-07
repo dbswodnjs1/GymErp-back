@@ -9,6 +9,8 @@ import com.example.gymerp.dto.VoucherLogDto;
 
 import lombok.RequiredArgsConstructor;
 
+import java.util.Map;
+
 @Primary
 @Repository
 @RequiredArgsConstructor
@@ -62,6 +64,12 @@ public class LogDaoImpl implements LogDao {
         return sqlSession.update("LogMapper.rollbackVoucherLog", dto);
     }
 
+    // 회원권 연장 (endDate + N일)
+    @Override
+    public int extendVoucherPeriod(Map<String, Object> params) {
+        return sqlSession.update("LogMapper.extendVoucherPeriod", params);
+    }
+
 
     // ===============================
     // [PT 로그 관련]
@@ -100,28 +108,41 @@ public class LogDaoImpl implements LogDao {
     // 특정 usageId 기준으로 PT 로그 단건 조회
     @Override
     public PtLogDto selectPtLogByUsageId(long usageId) {
-    	return sqlSession.selectOne("LogMapper.selectPtLogByUsageId", usageId);
+        return sqlSession.selectOne("LogMapper.selectPtLogByUsageId", usageId);
     }
-    
-    /* ===============================
-	    [PT 예약 / 취소 관련]
-	 =============================== */
-	
-	 // PT 예약 시 소비 로그 등록 
-	 @Override
-	 public int insertPtConsumeLog(PtLogDto dto) {
-	     return sqlSession.insert("LogMapper.insertPtConsumeLog", dto);
-	 }
-	
-	 // PT 예약 취소 시 복구 로그 등록 
-	 @Override
-	 public int insertPtCancelLog(PtLogDto dto) {
-	     return sqlSession.insert("LogMapper.insertPtCancelLog", dto);
-	 }
-	
-	 // PT 등록번호(regId)로 기존 소비 로그 조회
-	 @Override
-	 public PtLogDto selectPtLogByRegId(long regId) {
-	     return sqlSession.selectOne("LogMapper.selectPtLogByRegId", regId);
-	 }
+
+    // 판매내역(salesId) 기준 PT 로그 조회
+    @Override
+    public PtLogDto selectPtLogBySalesId(long salesId) {
+        return sqlSession.selectOne("LogMapper.selectPtLogBySalesId", salesId);
+    }
+
+    // 기존 PT 충전 로그의 countChange 수정 (연장 처리)
+    @Override
+    public int updatePtChargeCount(PtLogDto dto) {
+        return sqlSession.update("LogMapper.updatePtChargeCount", dto);
+    }
+
+
+    // ===============================
+    // [PT 예약 / 취소 관련]
+    // ===============================
+
+    // PT 예약 시 소비 로그 등록
+    @Override
+    public int insertPtConsumeLog(PtLogDto dto) {
+        return sqlSession.insert("LogMapper.insertPtConsumeLog", dto);
+    }
+
+    // PT 예약 취소 시 복구 로그 등록
+    @Override
+    public int insertPtCancelLog(PtLogDto dto) {
+        return sqlSession.insert("LogMapper.insertPtCancelLog", dto);
+    }
+
+    // PT 등록번호(regId)로 기존 소비 로그 조회
+    @Override
+    public PtLogDto selectPtLogByRegId(long regId) {
+        return sqlSession.selectOne("LogMapper.selectPtLogByRegId", regId);
+    }
 }
