@@ -246,6 +246,39 @@
 	         )
 	  ]]>
 	</update>
+	
+	<!-- ScheduleMapper.xml : PT 전용 업데이트 (겹침 + 회원권 범위) -->
+<update id="updateIfNoOverlapAndVoucherOK" parameterType="com.example.gymerp.dto.ScheduleDto">
+  <![CDATA[
+  UPDATE SCHEDULE s
+     SET s.EMPNUM    = #{empNum,    jdbcType=NUMERIC}
+       , s.CODEBID   = #{codeBid,   jdbcType=VARCHAR}
+       , s.STARTTIME = #{startTime, jdbcType=TIMESTAMP}
+       , s.ENDTIME   = #{endTime,   jdbcType=TIMESTAMP}
+       , s.MEMNUM    = #{memNum,    jdbcType=NUMERIC}
+       , s.MEMO      = #{memo,      jdbcType=VARCHAR}
+   WHERE s.SHNUM = #{shNum, jdbcType=NUMERIC}
+     AND NOT EXISTS (
+           SELECT 1
+             FROM SCHEDULE x
+            WHERE x.EMPNUM = #{empNum, jdbcType=NUMERIC}
+              AND x.SHNUM <> #{shNum, jdbcType=NUMERIC}
+              AND #{startTime, jdbcType=TIMESTAMP} < x.ENDTIME
+              AND x.STARTTIME < #{endTime,   jdbcType=TIMESTAMP}
+         )
+     AND (
+           /* PT가 아니면 회원권 검증 패스 */
+           #{codeBid, jdbcType=VARCHAR} <> 'SCHEDULE-PT'
+           OR EXISTS (
+                SELECT 1
+                  FROM voucher_log v
+                 WHERE v.memNum = #{memNum, jdbcType=NUMERIC}
+                   AND #{startTime, jdbcType=TIMESTAMP} >= v.startDate
+                   AND #{endTime,   jdbcType=TIMESTAMP} <= v.endDate
+             )
+         )
+  ]]>
+</update>
 
 <!-- ======================================================================================= --> 
 
