@@ -95,8 +95,8 @@ public class ScheduleDaoImpl implements ScheduleDao {
 	
 // ----------------------- 추가 ---------------------------------------------
 	// (PT일 경우) 시간 겹침 + 회원권 기간 체크까지 통과해야 UPDATE 됨.
-	 public int updateIfNoOverlapAndVoucherOK(ScheduleDto dto) {
-	        return session.update("ScheduleMapper.updateIfNoOverlapAndVoucherOK", dto);
+	 public int updateIfNoOverlapAndVoucherOK(ScheduleDto schedule) {
+	        return session.update("ScheduleMapper.updateIfNoOverlapAndVoucherOK", schedule);
 	    }
 //---------------------------------------------------------------------------
 

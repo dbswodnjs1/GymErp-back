@@ -32,7 +32,7 @@
   </select>
 
   <!-- ====================== 단건 조회 ====================== -->
-  <select id="selectByShNum" parameterType="int" resultMap="ScheduleMap">
+  <select id="selectByShNum" parameterType="long" resultMap="ScheduleMap">
 	  SELECT 
 	    s.shNum,
 	    s.empNum,
@@ -202,54 +202,37 @@
 	  </selectKey>
 	
 	  <![CDATA[
-	  INSERT INTO SCHEDULE (
-	    SHNUM, EMPNUM, CODEBID, STARTTIME, ENDTIME, MEMNUM, MEMO
-	  )
-	  SELECT
-	    #{shNum,      jdbcType=NUMERIC},
-	    #{empNum,     jdbcType=NUMERIC},
-	    #{codeBid,    jdbcType=VARCHAR},
-	    #{startTime,  jdbcType=TIMESTAMP},
-	    #{endTime,    jdbcType=TIMESTAMP},
-	    #{memNum,     jdbcType=NUMERIC},
-	    #{memo,       jdbcType=VARCHAR}
-	  FROM DUAL
-	  WHERE NOT EXISTS (
-	    SELECT 1
-	    FROM SCHEDULE s
-	    WHERE s.EMPNUM = #{empNum, jdbcType=NUMERIC}
-	      AND #{startTime, jdbcType=TIMESTAMP} < s.ENDTIME
-	      AND s.STARTTIME < #{endTime, jdbcType=TIMESTAMP}
-	  )
-	  ]]>
+  INSERT INTO SCHEDULE (SHNUM, EMPNUM, CODEBID, STARTTIME, ENDTIME, MEMNUM, MEMO)
+  SELECT
+    #{shNum,     jdbcType=NUMERIC},
+    #{empNum,    jdbcType=NUMERIC},
+    #{codeBid,   jdbcType=VARCHAR},
+    #{startTime, jdbcType=TIMESTAMP},
+    #{endTime,   jdbcType=TIMESTAMP},
+    #{memNum,    jdbcType=NUMERIC},   -- ★ null 가능 → 반드시 NUMERIC 지정
+    #{memo,      jdbcType=VARCHAR}
+  FROM DUAL
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM SCHEDULE s
+    WHERE s.EMPNUM = #{empNum, jdbcType=NUMERIC}
+      AND #{startTime, jdbcType=TIMESTAMP} < s.ENDTIME
+      AND s.STARTTIME < #{endTime, jdbcType=TIMESTAMP}
+      AND (
+            /* 새 일정이 PT/휴가면 어떤 상대든 겹치면 금지 */
+            #{codeBid, jdbcType=VARCHAR} IN ('SCHEDULE-PT','VACATION')
+         OR /* 새 일정이 ETC면 상대가 PT/휴가일 때만 금지(ETC↔ETC 허용) */
+            (#{codeBid, jdbcType=VARCHAR} IN ('ETC-MEETING','ETC-COUNSEL','ETC-COMPETITION')
+             AND s.CODEBID IN ('SCHEDULE-PT','VACATION'))
+          )
+  )
+  ]]>
 	</insert>
 	
 	
 	<!-- 일정 시간이 겹치지 않을 때만 UPDATE -->
 	<update id="updateIfNoOverlap" parameterType="com.example.gymerp.dto.ScheduleDto">
-	  <![CDATA[
-	  UPDATE SCHEDULE s
-	     SET s.EMPNUM    = #{empNum,    jdbcType=NUMERIC}
-	       , s.CODEBID   = #{codeBid,   jdbcType=VARCHAR}
-	       , s.STARTTIME = #{startTime, jdbcType=TIMESTAMP}
-	       , s.ENDTIME   = #{endTime,   jdbcType=TIMESTAMP}
-	       , s.MEMNUM    = #{memNum,    jdbcType=NUMERIC}
-	       , s.MEMO      = #{memo,      jdbcType=VARCHAR}
-	   WHERE s.SHNUM = #{shNum, jdbcType=NUMERIC}
-	     AND NOT EXISTS (
-	           SELECT 1
-	             FROM SCHEDULE x
-	            WHERE x.EMPNUM = #{empNum, jdbcType=NUMERIC}
-	              AND x.SHNUM <> #{shNum, jdbcType=NUMERIC}   -- 자기 자신 제외
-	              AND #{startTime, jdbcType=TIMESTAMP} < x.ENDTIME
-	              AND x.STARTTIME < #{endTime, jdbcType=TIMESTAMP}
-	         )
-	  ]]>
-	</update>
-	
-	<!-- ScheduleMapper.xml : PT 전용 업데이트 (겹침 + 회원권 범위) -->
-<update id="updateIfNoOverlapAndVoucherOK" parameterType="com.example.gymerp.dto.ScheduleDto">
-  <![CDATA[
+ <![CDATA[
   UPDATE SCHEDULE s
      SET s.EMPNUM    = #{empNum,    jdbcType=NUMERIC}
        , s.CODEBID   = #{codeBid,   jdbcType=VARCHAR}
@@ -264,17 +247,47 @@
             WHERE x.EMPNUM = #{empNum, jdbcType=NUMERIC}
               AND x.SHNUM <> #{shNum, jdbcType=NUMERIC}
               AND #{startTime, jdbcType=TIMESTAMP} < x.ENDTIME
-              AND x.STARTTIME < #{endTime,   jdbcType=TIMESTAMP}
+              AND x.STARTTIME < #{endTime, jdbcType=TIMESTAMP}
+              AND (
+                    #{codeBid, jdbcType=VARCHAR} IN ('SCHEDULE-PT','VACATION')
+                 OR (#{codeBid, jdbcType=VARCHAR} IN ('ETC-MEETING','ETC-COUNSEL','ETC-COMPETITION')
+                     AND x.CODEBID IN ('SCHEDULE-PT','VACATION'))
+                  )
+         )
+  ]]>
+	</update>
+	
+	<!-- ScheduleMapper.xml : PT 전용 업데이트 (겹침 + 회원권 범위) -->
+<update id="updateIfNoOverlapAndVoucherOK" parameterType="com.example.gymerp.dto.ScheduleDto">
+    <![CDATA[
+  UPDATE SCHEDULE s
+     SET s.EMPNUM    = #{empNum,    jdbcType=NUMERIC}
+     , s.CODEBID   = #{codeBid,   jdbcType=VARCHAR}
+     , s.STARTTIME = #{startTime, jdbcType=TIMESTAMP}
+     , s.ENDTIME   = #{endTime,   jdbcType=TIMESTAMP}
+     , s.MEMNUM    = #{memNum,    jdbcType=NUMERIC}  
+     , s.MEMO      = #{memo,      jdbcType=VARCHAR}
+WHERE s.SHNUM = #{shNum, jdbcType=NUMERIC}
+     AND NOT EXISTS (
+           SELECT 1 FROM SCHEDULE x
+            WHERE x.EMPNUM = #{empNum}
+              AND x.SHNUM <> #{shNum}
+              AND #{startTime} < x.ENDTIME
+              AND x.STARTTIME < #{endTime}
+              AND (
+                   #{codeBid} IN ('SCHEDULE-PT','VACATION')
+                OR (#{codeBid} IN ('ETC-MEETING','ETC-COUNSEL','ETC-COMPETITION')
+                    AND x.CODEBID IN ('SCHEDULE-PT','VACATION'))
+              )
          )
      AND (
-           /* PT가 아니면 회원권 검증 패스 */
-           #{codeBid, jdbcType=VARCHAR} <> 'SCHEDULE-PT'
+           #{codeBid} <> 'SCHEDULE-PT'
            OR EXISTS (
                 SELECT 1
                   FROM voucher_log v
-                 WHERE v.memNum = #{memNum, jdbcType=NUMERIC}
-                   AND #{startTime, jdbcType=TIMESTAMP} >= v.startDate
-                   AND #{endTime,   jdbcType=TIMESTAMP} <= v.endDate
+                 WHERE v.memNum = #{memNum}
+                   AND #{startTime} >= v.startDate
+                   AND #{endTime}   <= v.endDate
              )
          )
   ]]>

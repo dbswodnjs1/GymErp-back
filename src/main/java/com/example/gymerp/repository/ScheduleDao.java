@@ -56,6 +56,6 @@ public interface ScheduleDao {
     int updateIfNoOverlap(ScheduleDto schedule);
     
  // ----------------------- 추가 -------------------------
-    int updateIfNoOverlapAndVoucherOK(ScheduleDto dto);
+    int updateIfNoOverlapAndVoucherOK(ScheduleDto schedule);
 //--------------------------------------------------------
 }
