@@ -6,6 +6,8 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;                  // ✅ 추가
+import java.time.ZonedDateTime;          // ✅ 추가
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -25,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class EmpAttendanceController {
 
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul"); // ✅ KST 고정
     private final EmpAttendanceService service;
 
     /* ======================= 조회 ======================= */
@@ -103,20 +106,29 @@ public class EmpAttendanceController {
             throw new IllegalArgumentException("empNum (from auth) is required");
         }
 
-        service.checkIn(empNum); // ✅ 서비스 시그니처에 맞춰 checkIn(int empNum) 사용
-        log.info("checkIn OK empNum={}", empNum);
+        // ✅ DB 세션 타임존 영향 제거: KST '지금'을 서버에서 확정 생성해 전달
+        Timestamp nowKst = Timestamp.from(ZonedDateTime.now(KST).toInstant());
+        service.checkIn(empNum, nowKst); // ✅ 서비스 시그니처: checkIn(int empNum, Timestamp now) 로 변경 필요
+
+        log.info("checkIn OK empNum={} at {}", empNum, nowKst);
         return ResponseEntity.created(URI.create("/v1/attendance")).build();
     }
 
-    // 퇴근 — checkOut 없으면 SYSTIMESTAMP
+    // 퇴근 — 파라미터 없으면 KST 지금, 주어지면 KST로 해석해 저장
     @PutMapping("/attendance/{attNum}/checkout")
     public ResponseEntity<Void> checkOut(
             @PathVariable int attNum,
             @RequestParam(required = false) String checkOut
     ) {
-        Timestamp ts = (checkOut == null || checkOut.isBlank())
-                ? null
-                : Timestamp.valueOf(LocalDateTime.parse(checkOut, DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        // ✅ DB SYSTIMESTAMP를 쓰지 않고, 항상 애플리케이션에서 KST 타임스탬프 생성
+        Timestamp ts;
+        if (checkOut == null || checkOut.isBlank()) {
+            ts = Timestamp.from(ZonedDateTime.now(KST).toInstant()); // KST 현재
+        } else {
+            // 프론트가 tz 없는 'YYYY-MM-DDTHH:mm[:ss]'를 보낸다고 가정 → KST로 해석
+            LocalDateTime ldt = LocalDateTime.parse(checkOut, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            ts = Timestamp.from(ldt.atZone(KST).toInstant());
+        }
         service.updateEmpAttendanceCheckOut(attNum, ts);
         return ResponseEntity.noContent().build();
     }

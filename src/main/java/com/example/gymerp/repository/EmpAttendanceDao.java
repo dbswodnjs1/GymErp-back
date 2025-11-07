@@ -38,4 +38,10 @@ public interface EmpAttendanceDao {
 
     // 삭제
     int deleteEmpAttendance(@Param("attNum") int attNum);
+    
+    //출근용 추가
+    List<EmpAttendanceDto> selectAllByRange(
+    	    @Param("from") Date from,
+    	    @Param("to")   Date to
+    	);
 }

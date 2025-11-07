@@ -52,53 +52,73 @@
 		ORDER BY a.attDate DESC, a.attNum DESC
 	</select>
 
-	<!-- 출근(등록) -->
-	<insert id="insertEmpAttendance"
-		parameterType="com.example.gymerp.dto.EmpAttendanceDto">
-		<selectKey keyProperty="attNum" resultType="int"
-			order="BEFORE">
-			SELECT ATTENDANCE_SEQ.NEXTVAL FROM DUAL
-		</selectKey>
-		INSERT INTO attendance
-		(attNum, empNum, attDate, checkIn, checkOut, workHours, attState)
-		VALUES
-		(#{attNum},
-		#{empNum},
-		NVL(#{attDate,jdbcType=DATE}, TRUNC(SYSDATE)),
-		NVL(#{checkIn,jdbcType=TIMESTAMP}, SYSTIMESTAMP),
-		#{checkOut,jdbcType=TIMESTAMP},
-		NVL(#{workHours,jdbcType=NUMERIC}, 0),
-		NVL(#{attState,jdbcType=VARCHAR}, 'WORKING'))
-	</insert>
+	 <!-- 출근(등록) : DB 현재시각을 KST로 고정 -->
+  <insert id="insertEmpAttendance"
+          parameterType="com.example.gymerp.dto.EmpAttendanceDto">
+    <selectKey keyProperty="attNum" resultType="int" order="BEFORE">
+      SELECT ATTENDANCE_SEQ.NEXTVAL FROM DUAL
+    </selectKey>
+    INSERT INTO attendance
+      (attNum, empNum, attDate, checkIn, checkOut, workHours, attState)
+    VALUES
+      (
+        #{attNum},
+        #{empNum},
+        /* ✅ 날짜 칼럼은 KST 기준으로 TRUNC */
+        NVL(
+          #{attDate,jdbcType=DATE},
+          TRUNC(CAST((SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul') AS DATE))
+        ),
+        /* ✅ 체크인 타임스탬프도 KST 고정 */
+        NVL(
+          #{checkIn,jdbcType=TIMESTAMP},
+          CAST((SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul') AS TIMESTAMP)
+        ),
+        #{checkOut,jdbcType=TIMESTAMP},
+        NVL(#{workHours,jdbcType=NUMERIC}, 0),
+        NVL(#{attState,jdbcType=VARCHAR}, 'WORKING')
+      )
+  </insert>
 
-	<!-- 퇴근(체크아웃) -->
-	<update id="updateEmpAttendanceCheckOut" parameterType="map">
-		UPDATE attendance
-		SET checkOut = NVL(#{checkOut,jdbcType=TIMESTAMP}, SYSTIMESTAMP),
-		workHours = CASE
-		WHEN checkIn IS NOT NULL THEN
-		FLOOR(
-		(CAST(NVL(#{checkOut,jdbcType=TIMESTAMP}, SYSTIMESTAMP) AS DATE)
-		- CAST(checkIn AS DATE)) * 86400
-		)
-		ELSE workHours
-		END,
-		attState = 'DONE'
-		WHERE attNum = #{attNum}
-	</update>
-
+	<!-- 퇴근(체크아웃) : 파라미터 없으면 KST 현재시각 사용, 근무시간 계산도 동일 기준 -->
+  <update id="updateEmpAttendanceCheckOut" parameterType="map">
+    UPDATE attendance
+       SET checkOut = NVL(
+                         #{checkOut,jdbcType=TIMESTAMP},
+                         CAST((SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul') AS TIMESTAMP)  /* ✅ */
+                       ),
+           workHours =
+             CASE
+               WHEN checkIn IS NOT NULL THEN
+                 /* ✅ (checkOut_KST or now_KST) - checkIn 를 초(second)로 */
+                 FLOOR(
+                   (
+                     CAST(
+                       NVL(#{checkOut,jdbcType=TIMESTAMP},
+                           CAST((SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul') AS TIMESTAMP)
+                       ) AS DATE
+                     )
+                     - CAST(checkIn AS DATE)
+                   ) * 86400
+                 )
+               ELSE workHours
+             END,
+           attState = 'DONE'
+     WHERE attNum = #{attNum}
+  </update>
 	<!-- 전체 수정 -->
-	<update id="updateEmpAttendance"
-		parameterType="com.example.gymerp.dto.EmpAttendanceDto">
-		UPDATE attendance
-		SET empNum = #{empNum},
-		attDate = #{attDate,jdbcType=DATE},
-		checkIn = #{checkIn,jdbcType=TIMESTAMP},
-		checkOut = #{checkOut,jdbcType=TIMESTAMP},
-		workHours = #{workHours},
-		attState = #{attState}
-		WHERE attNum = #{attNum}
-	</update>
+	<!-- 전체 수정(수동 수정 시에는 전달값을 그대로 저장) -->
+  <update id="updateEmpAttendance"
+          parameterType="com.example.gymerp.dto.EmpAttendanceDto">
+    UPDATE attendance
+       SET empNum   = #{empNum},
+           attDate  = #{attDate,jdbcType=DATE},
+           checkIn  = #{checkIn,jdbcType=TIMESTAMP},
+           checkOut = #{checkOut,jdbcType=TIMESTAMP},
+           workHours= #{workHours},
+           attState = #{attState}
+     WHERE attNum   = #{attNum}
+  </update>
 
 	<!-- 삭제 -->
 	<delete id="deleteEmpAttendance" parameterType="int">

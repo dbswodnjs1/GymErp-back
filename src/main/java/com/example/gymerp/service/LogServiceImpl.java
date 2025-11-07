@@ -111,13 +111,13 @@ public class LogServiceImpl implements LogService {
         return logDao.selectPtLogByUsageId(refundId);
     }
 
-    // ✅ 판매내역(salesId) 기준 PT 로그 조회
+    // 판매내역(salesId) 기준 PT 로그 조회
     @Override
     public PtLogDto getPtLogBySalesId(long salesId) {
         return logDao.selectPtLogBySalesId(salesId);
     }
 
-    // ✅ 기존 PT 충전 로그의 countChange 수정 (연장 처리)
+    // 기존 PT 충전 로그의 countChange 수정 (연장 처리)
     @Override
     @Transactional
     public void updatePtChargeCount(PtLogDto dto) {

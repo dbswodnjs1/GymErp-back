@@ -1,12 +1,14 @@
 package com.example.gymerp;
 
 
+import java.util.TimeZone;
+
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import jakarta.annotation.PostConstruct;
 
 
 
@@ -25,4 +27,8 @@ public class GymErpApplication {
 		SpringApplication.run(GymErpApplication.class, args);
 	}
 
+	 @PostConstruct                                   // ✅ JVM 기본 TZ를 KST로 고정
+	    public void setTimeZone() {
+	        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+	    }
 }

@@ -22,17 +22,16 @@
   <select id="selectAll" resultMap="ScheduleMap">
     SELECT
       s.shNum, s.empNum, s.codeBid, s.startTime, s.endTime, s.memo,
-      e.empName, cb.name AS codeBName, m.memName
+      e.empName, cb.name AS codeBName, m.memName, s.memNum
     FROM SCHEDULE s
-      JOIN Employee e ON s.empNum = e.empNum
-      LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
-      LEFT JOIN Registration r ON s.shNum = r.shNum
-      LEFT JOIN Member m ON r.memNum = m.memNum
+	  JOIN Employee e ON s.empNum = e.empNum
+	  LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
+	  LEFT JOIN Member m ON s.memNum = m.memNum
     ORDER BY s.startTime ASC
   </select>
 
   <!-- ====================== 단건 조회 ====================== -->
-  <select id="selectByShNum" parameterType="long" resultMap="ScheduleMap">
+  <select id="selectByShNum" parameterType="int" resultMap="ScheduleMap">
 	  SELECT 
 	    s.shNum,
 	    s.empNum,
@@ -57,12 +56,11 @@
   <select id="selectByEmpNum" parameterType="int" resultMap="ScheduleMap">
     SELECT
       s.shNum, s.empNum, s.codeBid, s.startTime, s.endTime, s.memo,
-      e.empName, cb.name AS codeBName, m.memName
+      e.empName, cb.name AS codeBName, m.memName, s.memNum
     FROM SCHEDULE s
-      JOIN Employee e ON s.empNum = e.empNum
-      LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
-      LEFT JOIN Registration r ON s.shNum = r.shNum
-      LEFT JOIN Member m ON r.memNum = m.memNum
+	  JOIN Employee e ON s.empNum = e.empNum
+	  LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
+	  LEFT JOIN Member m ON s.memNum = m.memNum
     WHERE s.empNum = #{empNum}
     ORDER BY s.startTime ASC
   </select>
@@ -70,12 +68,11 @@
   <select id="selectByDateRange" resultMap="ScheduleMap">
     SELECT
       s.shNum, s.empNum, s.codeBid, s.startTime, s.endTime, s.memo,
-      e.empName, cb.name AS codeBName, m.memName
+      e.empName, cb.name AS codeBName, m.memName, s.memNum
     FROM SCHEDULE s
-      JOIN Employee e ON s.empNum = e.empNum
-      LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
-      LEFT JOIN Registration r ON s.shNum = r.shNum
-      LEFT JOIN Member m ON r.memNum = m.memNum
+	  JOIN Employee e ON s.empNum = e.empNum
+	  LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
+	  LEFT JOIN Member m ON s.memNum = m.memNum
     WHERE s.startTime BETWEEN #{startDate} AND #{endDate}
     ORDER BY s.startTime ASC
   </select>
@@ -140,17 +137,16 @@
     SELECT *
     FROM (
       SELECT
-        s.shNum, s.empNum, s.codeBid, s.startTime, s.endTime, s.memo,
+        s.shNum, s.empNum, s.codeBid, s.startTime, s.endTime, s.memo, s.memNum,
         e.empName,
         cb.name AS codeBName,
         m.memName,
         m.memNum,
         ROW_NUMBER() OVER (ORDER BY s.startTime DESC) AS rn
       FROM SCHEDULE s
-        JOIN Employee e ON s.empNum = e.empNum
-        LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
-        LEFT JOIN Registration r ON r.shNum = s.shNum
-        LEFT JOIN Member m ON r.memNum = m.memNum
+		  JOIN Employee e ON s.empNum = e.empNum
+		  LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
+		  LEFT JOIN Member m ON s.memNum = m.memNum
       <where>
         <if test="codeBid != null and codeBid != ''">
           s.codeBid = #{codeBid}
@@ -176,8 +172,7 @@
     FROM SCHEDULE s
       JOIN Employee e ON s.empNum = e.empNum
       LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
-      LEFT JOIN Registration r ON r.shNum = s.shNum
-      LEFT JOIN Member m ON r.memNum = m.memNum
+      LEFT JOIN Member m ON s.memNum = m.memNum
     <where>
       <if test="codeBid != null and codeBid != ''">
         s.codeBid = #{codeBid}
@@ -196,41 +191,80 @@
  <!-- ===================== ⬇ 추가 ⬇ ========================================================================== --> 
  
   <!-- ===================== ⬇ 회원권 유효 확인 ⬇ ===================== -->
+  
+	<!-- 일정 시간이 정책에 따라 겹치지 않을 때만 INSERT -->
 	<insert id="insertIfNoOverlap" parameterType="com.example.gymerp.dto.ScheduleDto">
 	  <selectKey keyProperty="shNum" resultType="long" order="BEFORE">
 	    SELECT SCHEDULE_SEQ.NEXTVAL FROM DUAL
 	  </selectKey>
 	
-<![CDATA[
-  INSERT INTO SCHEDULE (SHNUM, EMPNUM, CODEBID, STARTTIME, ENDTIME, MEMNUM, MEMO)
-  SELECT
-    #{shNum,     jdbcType=NUMERIC},
-    #{empNum,    jdbcType=NUMERIC},
-    #{codeBid,   jdbcType=VARCHAR},
-    #{startTime, jdbcType=TIMESTAMP},
-    #{endTime,   jdbcType=TIMESTAMP},
-    #{memNum,    jdbcType=NUMERIC},
-    #{memo,      jdbcType=VARCHAR}
-  FROM DUAL
-  WHERE NOT EXISTS (
-    SELECT 1
-      FROM SCHEDULE s
-     WHERE s.EMPNUM = #{empNum, jdbcType=NUMERIC}
-       AND TRUNC(#{startTime, jdbcType=TIMESTAMP}) <= TRUNC(s.ENDTIME)
-       AND TRUNC(s.STARTTIME) <= TRUNC(#{endTime, jdbcType=TIMESTAMP})
-       AND (
-            s.CODEBID = 'VACATION' OR #{codeBid, jdbcType=VARCHAR} = 'VACATION'
-         OR (s.CODEBID = 'SCHEDULE-PT' AND #{codeBid, jdbcType=VARCHAR} = 'SCHEDULE-PT')
-         OR (s.CODEBID LIKE 'ETC-%'     AND #{codeBid, jdbcType=VARCHAR} LIKE 'ETC-%')
-           )
-  )
-  ]]>
+	  <![CDATA[
+	  INSERT INTO SCHEDULE (
+	    SHNUM, EMPNUM, CODEBID, STARTTIME, ENDTIME, MEMNUM, MEMO
+	  )
+	  SELECT
+	    #{shNum,      jdbcType=NUMERIC},
+	    #{empNum,     jdbcType=NUMERIC},
+	    #{codeBid,    jdbcType=VARCHAR},
+	    #{startTime,  jdbcType=TIMESTAMP},
+	    #{endTime,    jdbcType=TIMESTAMP},
+	    #{memNum,     jdbcType=NUMERIC},
+	    #{memo,       jdbcType=VARCHAR}
+	  FROM DUAL
+	  WHERE NOT EXISTS (
+	    SELECT 1
+	    FROM SCHEDULE s
+	    WHERE s.EMPNUM = #{empNum, jdbcType=NUMERIC}
+	      AND #{startTime, jdbcType=TIMESTAMP} < s.ENDTIME
+	      AND s.STARTTIME < #{endTime, jdbcType=TIMESTAMP}
+	      AND (
+	            /* PT는 PT/VACATION과만 충돌 */
+	            (#{codeBid, jdbcType=VARCHAR} = 'SCHEDULE-PT' AND s.CODEBID IN ('SCHEDULE-PT','VACATION'))
+	         OR /* ETC는 VACATION과만 충돌 */
+	            (#{codeBid, jdbcType=VARCHAR} LIKE 'ETC-%'       AND s.CODEBID = 'VACATION')
+	         OR /* VACATION은 모든 코드와 충돌 */
+	            (#{codeBid, jdbcType=VARCHAR} = 'VACATION')
+	          )
+	  )
+	  ]]>
+
 	</insert>
+
 	
 	
-	<!-- 일정 시간이 겹치지 않을 때만 UPDATE -->
+	<!-- 일정 시간이 정책에 따라 겹치지 않을 때만 UPDATE -->
 	<update id="updateIfNoOverlap" parameterType="com.example.gymerp.dto.ScheduleDto">
-  <![CDATA[
+	   <![CDATA[
+  UPDATE SCHEDULE s
+     SET s.EMPNUM    = #{empNum,    jdbcType=NUMERIC}
+       , s.CODEBID   = #{codeBid,   jdbcType=VARCHAR}
+       , s.STARTTIME = #{startTime, jdbcType=TIMESTAMP}
+       , s.ENDTIME   = #{endTime,   jdbcType=TIMESTAMP}
+       , s.MEMNUM    = #{memNum,    jdbcType=NUMERIC}
+       , s.MEMO      = #{memo,      jdbcType=VARCHAR}
+   WHERE s.SHNUM = #{shNum, jdbcType=NUMERIC}
+     AND NOT EXISTS (
+           SELECT 1
+             FROM SCHEDULE x
+            WHERE x.EMPNUM = #{empNum, jdbcType=NUMERIC}
+              AND x.SHNUM <> #{shNum, jdbcType=NUMERIC}  -- 자기 자신 제외
+              AND #{startTime, jdbcType=TIMESTAMP} < x.ENDTIME
+              AND x.STARTTIME < #{endTime,   jdbcType=TIMESTAMP}
+              AND (
+                    /* PT는 PT/VACATION과 충돌 */
+                    (#{codeBid, jdbcType=VARCHAR} = 'SCHEDULE-PT' AND x.CODEBID IN ('SCHEDULE-PT','VACATION'))
+                 OR /* ETC는 VACATION과만 충돌 */
+                    (#{codeBid, jdbcType=VARCHAR} LIKE 'ETC-%'     AND x.CODEBID = 'VACATION')
+                 OR /* VACATION은 모두와 충돌 */
+                    (#{codeBid, jdbcType=VARCHAR} = 'VACATION')
+                  )
+         )
+  ]]>
+	</update>
+	
+	<!-- ScheduleMapper.xml : PT 전용 업데이트 (겹침 + 회원권 범위) -->
+<update id="updateIfNoOverlapAndVoucherOK" parameterType="com.example.gymerp.dto.ScheduleDto">
+    <![CDATA[
   UPDATE SCHEDULE s
      SET s.EMPNUM    = #{empNum,    jdbcType=NUMERIC}
        , s.CODEBID   = #{codeBid,   jdbcType=VARCHAR}
@@ -244,52 +278,24 @@
              FROM SCHEDULE x
             WHERE x.EMPNUM = #{empNum, jdbcType=NUMERIC}
               AND x.SHNUM <> #{shNum, jdbcType=NUMERIC}
-              AND TRUNC(#{startTime, jdbcType=TIMESTAMP}) <= TRUNC(x.ENDTIME)
-              AND TRUNC(x.STARTTIME) <= TRUNC(#{endTime, jdbcType=TIMESTAMP})
+              AND #{startTime, jdbcType=TIMESTAMP} < x.ENDTIME
+              AND x.STARTTIME < #{endTime,   jdbcType=TIMESTAMP}
               AND (
-                   x.CODEBID = 'VACATION' OR #{codeBid, jdbcType=VARCHAR} = 'VACATION'
-                OR (x.CODEBID = 'SCHEDULE-PT' AND #{codeBid, jdbcType=VARCHAR} = 'SCHEDULE-PT')
-                OR (x.CODEBID LIKE 'ETC-%'     AND #{codeBid, jdbcType=VARCHAR} LIKE 'ETC-%')
+                    /* 현재 수정 대상이 PT 라고 전제 */
+                    (#{codeBid, jdbcType=VARCHAR} = 'SCHEDULE-PT' AND x.CODEBID IN ('SCHEDULE-PT','VACATION'))
                   )
          )
-  ]]>
-	</update>
-	
-	<!-- ScheduleMapper.xml : PT 전용 업데이트 (겹침 + 회원권 범위) -->
-<update id="updateIfNoOverlapAndVoucherOK" parameterType="com.example.gymerp.dto.ScheduleDto">
-    <![CDATA[
-  UPDATE SCHEDULE s
-     SET s.EMPNUM    = #{empNum,    jdbcType=NUMERIC}
-     , s.CODEBID   = #{codeBid,   jdbcType=VARCHAR}
-     , s.STARTTIME = #{startTime, jdbcType=TIMESTAMP}
-     , s.ENDTIME   = #{endTime,   jdbcType=TIMESTAMP}
-     , s.MEMNUM    = #{memNum,    jdbcType=NUMERIC}  
-     , s.MEMO      = #{memo,      jdbcType=VARCHAR}
-WHERE s.SHNUM = #{shNum, jdbcType=NUMERIC}
-     AND NOT EXISTS (
-           SELECT 1 FROM SCHEDULE x
-            WHERE x.EMPNUM = #{empNum}
-              AND x.SHNUM <> #{shNum}
-              AND #{startTime} < x.ENDTIME
-              AND x.STARTTIME < #{endTime}
-              AND (
-                   #{codeBid} IN ('SCHEDULE-PT','VACATION')
-                OR (#{codeBid} IN ('ETC-MEETING','ETC-COUNSEL','ETC-COMPETITION')
-                    AND x.CODEBID IN ('SCHEDULE-PT','VACATION'))
-              )
-         )
-     AND (
-           #{codeBid} <> 'SCHEDULE-PT'
-  OR EXISTS (
-       SELECT 1 FROM VOUCHER_LOG v
-        WHERE v.MEMNUM = #{memNum}
-          -- 날짜만 비교하려면 TRUNC 사용
-          AND TRUNC(#{startTime}) >= TRUNC(v.STARTDATE)
-          AND TRUNC(#{endTime})   <= TRUNC(v.ENDDATE)
-             )
+     AND EXISTS (
+           SELECT 1
+             FROM VOUCHER_LOG v
+            WHERE v.MEMNUM = #{memNum, jdbcType=NUMERIC}
+              -- 날짜 단위 비교면 TRUNC 유지, 시간까지 엄격히면 TRUNC 제거
+              AND TRUNC(#{startTime, jdbcType=TIMESTAMP}) >= TRUNC(v.STARTDATE)
+              AND TRUNC(#{endTime,   jdbcType=TIMESTAMP}) <= TRUNC(v.ENDDATE)
          )
   ]]>
 </update>
+
 
 <!-- ======================================================================================= --> 
 

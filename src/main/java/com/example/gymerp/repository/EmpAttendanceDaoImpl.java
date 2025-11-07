@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class EmpAttendanceDaoImpl implements EmpAttendanceDao {
     private final SqlSessionTemplate session;
 
+    @Override
     public List<EmpAttendanceDto> selectAllByDate(Date date) {
         return session.selectList("EmpAttendanceMapper.selectAllByDate", date);
     }
@@ -31,7 +32,7 @@ public class EmpAttendanceDaoImpl implements EmpAttendanceDao {
 
     @Override
     public EmpAttendanceDto selectEmpAttendanceById(int attNum) {
-        return session.selectOne("EmpAttendanceMapper.selectEmpAttendanceById", attNum); // ✅
+        return session.selectOne("EmpAttendanceMapper.	selectEmpAttendanceById", attNum); // ✅
     }
 
     @Override
@@ -61,10 +62,16 @@ public class EmpAttendanceDaoImpl implements EmpAttendanceDao {
     public int deleteEmpAttendance(int attNum) {
         return session.delete("EmpAttendanceMapper.deleteEmpAttendance", attNum); // ✅
     }
-
+//
     @Override
     public List<EmpAttendanceDto> selectEmpAttendancesByRange(int empNum, Date from, Date to) {
         Map<String,Object> p = Map.of("empNum", empNum, "from", from, "to", to);
         return session.selectList("EmpAttendanceMapper.selectEmpAttendancesByRange", p); // ✅
     }
+       // ✅ 전직원 기간조회 (ServiceImpl에서 empNum<=0일 때 호출)
+       @Override
+       public List<EmpAttendanceDto> selectAllByRange(Date from, Date to) {
+           Map<String,Object> p = Map.of("from", from, "to", to);
+           return session.selectList("EmpAttendanceMapper.selectAllByRange", p);
+       }
 }

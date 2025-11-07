@@ -17,7 +17,7 @@ public interface EmpAttendanceService {
     EmpAttendanceDto getEmpAttendanceById(int attNum);
 
     // ✅ 바디 DTO 대신 확정된 empNum만 받음
-    int checkIn(int empNum);
+    void checkIn(int empNum, Timestamp now);
 
     int updateEmpAttendanceCheckOut(int attNum, Timestamp checkOut);
     int updateEmpAttendance(EmpAttendanceDto dto);
