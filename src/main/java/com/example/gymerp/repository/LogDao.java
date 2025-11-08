@@ -69,6 +69,9 @@ public interface LogDao {
 
     // ✅ 내 차례 도달 여부 판별
     int checkPtTurnReached(Map<String, Object> params);
+    
+    // ✅ 해당 차례 이후 실제 사용 여부 확인
+    int getUsedCountBySalesId(long salesId);
 
 
 

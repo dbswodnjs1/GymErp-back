@@ -15,12 +15,12 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/v1")
 @RequiredArgsConstructor
-@ConditionalOnProperty(     
+/*@ConditionalOnProperty(     
     prefix = "feature",
     name = "service-sale",
     havingValue = "true",
     matchIfMissing = false
-)
+)*/
 public class SalesServiceController {
 
     private final SalesServiceService salesServiceService;

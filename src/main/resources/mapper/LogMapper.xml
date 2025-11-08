@@ -29,7 +29,13 @@
             SELECT voucher_log_seq.NEXTVAL FROM DUAL
         </selectKey>
         INSERT INTO voucher_log (voucherId, memNum, memberName, startDate, endDate)
-        VALUES (#{voucherId}, #{memNum}, #{memberName}, #{startDate}, #{endDate})
+	    VALUES (
+	        #{voucherId},
+	        #{memNum},
+	        #{memberName},
+	        TO_DATE(SUBSTR(#{startDate}, 1, 19), 'YYYY-MM-DD"T"HH24:MI:SS'),
+	        TO_DATE(SUBSTR(#{endDate}, 1, 19), 'YYYY-MM-DD"T"HH24:MI:SS')
+    )
     </insert>
 
     <!-- 회원권 기간 연장 -->
@@ -71,15 +77,17 @@
     <!-- ✅ 직전 회원권(원시 로그) 조회 -->
     <select id="selectPreviousVoucherByMember" parameterType="long" resultType="VoucherLogDto">
         SELECT *
-        FROM voucher_log
-        WHERE memNum = #{memNum}
-          AND endDate &lt; (
-              SELECT MAX(endDate)
-              FROM voucher_log
-              WHERE memNum = #{memNum}
-          )
-        ORDER BY endDate DESC
-        FETCH FIRST 1 ROWS ONLY
+	    FROM (
+	        SELECT *
+	        FROM voucher_log
+	        WHERE memNum = #{memNum}
+	          AND endDate &lt; (
+	              SELECT MAX(endDate)
+	              FROM voucher_log
+	              WHERE memNum = #{memN          )
+	        ORDER BY endDate DESC
+	    )
+	    WHERE ROWNUM = 1
     </select>
 
 
@@ -96,7 +104,7 @@
         INSERT INTO pt_log (
             usageId, memNum, empNum, status, countChange, createdAt, salesId, regId
         ) VALUES (
-            #{usageId}, #{memNum}, #{empNum}, '충전', NVL(#{countChange, jdbcType=NUMERIC}, 1), SYSDATE, #{salesId, jdbcType=NUMERIC}, #{regId, jdbcType=NUMERIC}
+            #{usageId}, #{memNum}, #{empNum}, '충전',  #{countChange, jdbcType=NUMERIC}, SYSDATE, #{salesId, jdbcType=NUMERIC}, #{regId, jdbcType=NUMERIC}
         )
     </insert>
 
@@ -135,7 +143,7 @@
     <!-- ✅ PT 연장 시 기존 충전 로그의 countChange 수정 -->
     <update id="updatePtChargeCount" parameterType="PtLogDto">
         UPDATE pt_log
-           SET countChange = countChange + #{countChange}
+           SET countChange = #{countChange}
          WHERE salesId = #{salesId}
            AND status = '충전'
     </update>
@@ -215,6 +223,25 @@
         FROM pt_log
         WHERE regId = #{regId}
           AND status = '소비'
+    </select>
+    
+    <!-- ✅ 해당 차례 이후 실제 사용 여부 확인 -->
+    <select id="getUsedCountBySalesId" parameterType="long" resultType="int">
+        SELECT COUNT(*)
+        FROM pt_log
+        WHERE status = '소비'
+          AND memNum = (
+              SELECT memNum
+              FROM pt_log
+              WHERE salesId = #{salesId}
+                AND status = '충전'
+          )
+          AND createdAt &gt;= (
+              SELECT MIN(createdAt)
+              FROM pt_log
+              WHERE salesId = #{salesId}
+                AND status = '충전'
+          )
     </select>
 
 </mapper>
