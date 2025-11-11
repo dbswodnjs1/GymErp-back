@@ -60,8 +60,8 @@ public interface LogService {
     void updatePtChargeCount(PtLogDto dto);
 
 
-	/** ✅ 판매내역(salesId) 기준 PT 충전 로그 조회 (수정 시 기준 데이터로 사용) */
-	PtLogDto getPtLogByRefundId(long refundId);
-
+    /** ✅ 환불 ID(refundId)로 PT 로그 조회 */
+    // 환불 ID(refundId)로 PT 로그 조회
+    PtLogDto getPtLogByRefundId(long refundId);
 
 }

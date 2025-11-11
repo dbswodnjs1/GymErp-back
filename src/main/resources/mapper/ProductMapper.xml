@@ -111,8 +111,8 @@
 			SELECT product_seq.NEXTVAL FROM DUAL
 		</selectKey>
 		INSERT INTO product
-		(productId, codeBId, name, price, isActive, createdAt, profileImage)
-		VALUES(#{productId}, #{codeBId}, #{name}, #{price}, #{isActive}, #{createdAt}, #{profileImage, jdbcType=VARCHAR})
+		(productId, codeBId, name, price, isActive, createdAt, profileImage, note)
+		VALUES(#{productId}, #{codeBId}, #{name}, #{price}, #{isActive}, #{createdAt}, #{profileImage, jdbcType=VARCHAR}, #{note, jdbcType=VARCHAR})
 	</insert>
 	
 	<update id="update" parameterType="productDto">
