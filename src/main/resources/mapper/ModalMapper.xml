@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="ModalMapper">
+
+    <!-- ========================================================= [서비스 상품 선택 모달] ========================================================= -->
+		<select id="getServiceModalList"
+		        parameterType="com.example.gymerp.dto.ServiceDto"
+		        resultType="com.example.gymerp.dto.ServiceDto">
+		  SELECT *
+		  FROM (
+		    SELECT t.*, ROWNUM AS rn
+		    FROM (
+		      SELECT
+		        s.SERVICEID    AS serviceId,
+		        s.CODEBID      AS codeBId,
+		        s.NAME         AS name,
+		        s.PRICE        AS price,
+		        s.ISACTIVE     AS isActive,
+		        s.SERVICEVALUE AS serviceValue,
+		        s.CREATEDAT    AS createdAt,
+		        s.UPDATEDAT    AS updatedAt,
+		        s.NOTE         AS note
+		      FROM SERVICE s
+		      WHERE s.ISACTIVE = 1
+		      <if test="keyword != null and keyword != ''">
+		        AND LOWER(s.NAME) LIKE '%' || LOWER(#{keyword}) || '%'
+		      </if>
+		      <if test="categoryCodes != null and categoryCodes.size() > 0">
+		        AND s.CODEBID IN
+		        <foreach collection="categoryCodes" item="code" open="(" separator="," close=")">
+		          #{code}
+		        </foreach>
+		      </if>
+		      ORDER BY
+		        CASE WHEN s.CODEBID LIKE '%PT%' THEN 0 ELSE 1 END,
+		        s.NAME DESC
+		    ) t
+		    WHERE ROWNUM &lt;= #{endRowNum}
+		  )
+		  WHERE rn &gt;= #{startRowNum}
+		</select>
+
+<!-- ========================================================= [서비스 상품 선택 모달 끝] ========================================================= -->	
+
+
+	<!-- ========================================================= [서비스 상품 총 개수 조회] ========================================================= -->
+	<select id="getServiceModalCount" resultType="int">
+	    SELECT COUNT(*)
+	    FROM SERVICE s
+	    WHERE s.ISACTIVE = 1
+	
+	    <if test="keyword != null and keyword != ''">
+	        AND LOWER(s.NAME) LIKE '%' || LOWER(#{keyword}) || '%'
+	    </if>
+	
+	    <if test="categoryCodes != null and categoryCodes.size() > 0">
+	        AND s.CODEBID IN
+	        <foreach collection="categoryCodes" item="code" open="(" separator="," close=")">
+	            #{code}
+	        </foreach>
+	    </if>
+	</select>
+
+	<!-- ========================================================= [서비스 상품 총 개수 조회 끝] ========================================================= -->
+    
+    
+    
+	<!-- ========================================================= [실물 상품 총 개수 조회] ========================================================= -->
+
+	<select id="getProductModalList" parameterType="map"
+	        resultType="com.example.gymerp.dto.ProductDto">
+	  SELECT productId, codeBId, name, price, isActive
+	  FROM (
+	    SELECT
+	      p.productId,
+	      p.codeBId,
+	      p.name,
+	      p.price,
+	      p.isActive,
+	      ROW_NUMBER() OVER (ORDER BY p.name DESC) AS rn
+	    FROM PRODUCT p
+	    WHERE p.isActive = 1
+	      <if test="keyword != null and keyword != ''">
+	        AND UPPER(p.name) LIKE '%' || UPPER(#{keyword}) || '%'
+	      </if>
+	  )
+	  WHERE rn BETWEEN #{startRow, jdbcType=NUMERIC} AND #{endRow, jdbcType=NUMERIC}
+	</select>
+	
+	<select id="getProductModalCount" parameterType="map" resultType="int">
+	  SELECT COUNT(1)
+	  FROM PRODUCT p
+	  WHERE p.isActive = 1
+	    <if test="keyword != null and keyword != ''">
+	      AND UPPER(p.name) LIKE '%' || UPPER(#{keyword}) || '%'
+	    </if>
+	</select>
+
+    
+	<!-- ========================================================= [실물 상품 총 개수 조회] ========================================================= -->  
+	
+	
+	
+	
+
+	<!-- ========================================================= [직원 선택 모달] ========================================================= -->
+    
+	<select id="getEmployeeModalList" parameterType="map"
+	        resultType="com.example.gymerp.dto.EmpDto">
+	  SELECT empNum, empName, empEmail
+	  FROM (
+	    SELECT
+	      e.EMPNUM   AS empNum,
+	      e.EMPNAME  AS empName,
+	      e.EMPEMAIL AS empEmail,
+	      ROW_NUMBER() OVER (ORDER BY e.EMPNAME ASC) AS rn
+	    FROM EMPLOYEE e
+	    WHERE e.FIREDATE IS NULL
+	      <if test="keyword != null and keyword != ''">
+	        AND ( UPPER(e.EMPNAME)  LIKE '%' || UPPER(#{keyword}) || '%'
+	           OR UPPER(e.EMPEMAIL) LIKE '%' || UPPER(#{keyword}) || '%' )
+	      </if>
+	  )
+	  WHERE rn BETWEEN #{startRow} AND #{endRow}
+	</select>
+	
+	<!-- 전체 개수 -->
+	<select id="getEmployeeModalCount" parameterType="map" resultType="int">
+	  SELECT COUNT(1)
+	  FROM EMPLOYEE e
+	  WHERE e.FIREDATE IS NULL
+	    <if test="keyword != null and keyword != ''">
+	      AND ( UPPER(e.EMPNAME)  LIKE '%' || UPPER(#{keyword}) || '%'
+	         OR UPPER(e.EMPEMAIL) LIKE '%' || UPPER(#{keyword}) || '%' )
+	    </if>
+	</select>
+	
+
+	<!-- ========================================================= [직원 선택 모달] ========================================================= -->
+	
+	
+	
+    
+    <!-- ================================
+         회원 선택 모달
+    ================================= -->
+    
+    
+    <!-- ================================
+         회원 선택 모달 끝
+    ================================= -->    
+
+</mapper>

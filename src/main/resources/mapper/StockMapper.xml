@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="StockMapper">
+
+   <select id="getAvailableQty" parameterType="int" resultType="int">
+	  SELECT
+	    COALESCE( (SELECT SUM(quantity) FROM Purchase        WHERE productId = #{productId}), 0 )
+	  - COALESCE( (SELECT SUM(quantity) FROM StockAdjustment WHERE productId = #{productId}), 0 )
+	  - COALESCE((SELECT SUM(quantity) FROM Sales_Item WHERE productId = #{productId} AND status = 'ACTIVE'), 0)
+	  AS availableQty
+	  FROM DUAL
+	</select>
+
+	<select id="getPurchaseList" parameterType="map" resultType="PurchaseDto">
+		SELECT
+	        purchaseId,
+	        productId,
+	        codeBId,
+	        createdAt,
+	        quantity,
+	        notes
+	    FROM (
+	        SELECT
+	            p.purchaseId  AS purchaseId,
+	            p.productId   AS productId,
+	            p.codeBId     AS codeBId,
+	            p.createdAt   AS createdAt,
+	            p.quantity    AS quantity,
+	            p.notes       AS notes,
+	            ROW_NUMBER() OVER (ORDER BY p.createdAt DESC, p.purchaseId DESC) AS rn
+	        FROM PURCHASE p
+	        WHERE p.productId = #{productId}
+			<if test="startDate != null and startDate != ''">
+				AND p.createdAt >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND p.createdAt &lt;= TO_DATE(#{endDate}, 'YYYY-MM-DD') + 0.99999
+			</if>
+	    )
+	    WHERE rn > #{offset}
+	      AND rn &lt;= #{offset} + #{size}
+	    ORDER BY createdAt DESC, purchaseId DESC
+	</select>
+	
+	<select id="getPurchaseListCount" parameterType="map" resultType="int">
+	    SELECT COUNT(*)
+	    FROM PURCHASE p
+	    WHERE p.productId = #{productId}
+		<if test="startDate != null and startDate != ''">
+			AND p.createdAt >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+		</if>
+		<if test="endDate != null and endDate != ''">
+			AND p.createdAt &lt;= TO_DATE(#{endDate}, 'YYYY-MM-DD') + 0.99999
+		</if>
+    </select>
+	
+	<select id="getAdjustStockAndSalesList" parameterType="map" resultType="StockAdjustmentDto">
+		SELECT
+	        adjustmentId,
+	        productId,
+	        codeBId,
+	        createdAt,
+	        quantity,
+	        notes
+	    FROM (
+	        SELECT
+	            t.adjustmentId AS adjustmentId,
+	            t.productId    AS productId,
+	            t.codeBId      AS codeBId,
+	            t.createdAt    AS createdAt,
+	            t.quantity     AS quantity,
+	            t.notes        AS notes,
+	            ROW_NUMBER() OVER (ORDER BY t.createdAt DESC, t.adjustmentId DESC) AS rn
+	        FROM (
+	            SELECT
+	                sa.adjustmentId AS adjustmentId,
+	                sa.productId    AS productId,
+	                sa.codeBId      AS codeBId,
+	                sa.createdAt    AS createdAt,
+	                sa.quantity     AS quantity,
+	                sa.notes        AS notes
+	            FROM STOCKADJUSTMENT sa
+	            WHERE sa.productId = #{productId}
+				<if test="startDate != null and startDate != ''">
+					AND sa.createdAt >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+				</if>
+				<if test="endDate != null and endDate != ''">
+					AND sa.createdAt &lt;= TO_DATE(#{endDate}, 'YYYY-MM-DD') + 0.99999
+				</if>
+
+               UNION ALL
+
+               SELECT
+                   si.itemSalesId  AS adjustmentId,
+                   si.productId    AS productId,
+                   'SALES'         AS codeBId,
+                   si.createdAt    AS createdAt,
+                   si.quantity     AS quantity,
+                   '상품 판매'      AS notes
+               FROM SALES_ITEM si
+               WHERE si.productId = #{productId}
+				<if test="startDate != null and startDate != ''">
+					AND si.createdAt >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+				</if>
+			<if test="endDate != null and endDate != ''">
+				AND si.createdAt &lt;= TO_DATE(#{endDate}, 'YYYY-MM-DD') + 0.99999
+			</if>
+                AND si.status = 'ACTIVE'
+	        ) t
+	    )
+	    WHERE rn > #{offset}
+	      AND rn &lt;= #{offset} + #{size}
+	    ORDER BY createdAt DESC, adjustmentId DESC
+	</select>
+
+	<select id="getAdjustStockAndSalesListCount" parameterType="map" resultType="int">
+	    SELECT COUNT(*)
+	    FROM (
+	        SELECT adjustmentId FROM STOCKADJUSTMENT sa WHERE sa.productId = #{productId}
+			<if test="startDate != null and startDate != ''">
+				AND sa.createdAt >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND sa.createdAt &lt;= TO_DATE(#{endDate}, 'YYYY-MM-DD') + 0.99999
+			</if>
+	        UNION ALL
+	        SELECT itemSalesId FROM SALES_ITEM si WHERE si.productId = #{productId}
+			<if test="startDate != null and startDate != ''">
+				AND si.createdAt >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND si.createdAt &lt;= TO_DATE(#{endDate}, 'YYYY-MM-DD') + 0.99999
+			</if>
+            AND si.status = 'ACTIVE'
+	    )
+	</select>
+
+	<select id="getCurrentStockListPaged" parameterType="map" resultType="CurrentStockDto">
+		SELECT
+		      base.productId,
+		      base.productName,
+		      base.totalInbound,
+		      base.totalOutbound,
+		      base.totalSales,
+		      base.currentStock
+		  FROM (
+		      SELECT
+		          p.productId            AS productId,
+		          p.name                 AS productName,
+		          NVL(pi.total_in,    0) AS totalInbound,
+		          NVL(sa.total_out,   0) AS totalOutbound,
+		          NVL(si.total_sales, 0) AS totalSales,
+		          NVL(pi.total_in,0) - NVL(sa.total_out,0) - NVL(si.total_sales,0) AS currentStock,
+		          ROW_NUMBER() OVER (ORDER BY p.name ASC) AS rn
+		      FROM PRODUCT p
+		      LEFT JOIN (
+		          SELECT productId, SUM(quantity) AS total_in
+		          FROM PURCHASE
+		          GROUP BY productId
+		      ) pi ON pi.productId = p.productId
+		      LEFT JOIN (
+		          SELECT productId, SUM(quantity) AS total_out
+		          FROM STOCKADJUSTMENT
+		          GROUP BY productId
+		      ) sa ON sa.productId = p.productId
+		      LEFT JOIN (
+		          SELECT productId, SUM(quantity) AS total_sales
+		          FROM SALES_ITEM
+                  WHERE status = 'ACTIVE'
+		          GROUP BY productId
+		      ) si ON si.productId = p.productId
+		      <where>
+		          <if test="keyword != null and keyword != ''">
+		              (LOWER(p.name) LIKE '%' || LOWER(#{keyword}) || '%'
+		               OR LOWER(p.codeBId) LIKE '%' || LOWER(#{keyword}) || '%')
+		          </if>
+		      </where>
+		  ) base
+		  WHERE base.rn > #{offset}
+		    AND base.rn &lt;= #{offset} + #{size}
+		  ORDER BY base.productName ASC
+	</select>
+	
+	<insert id="insertPurchase" parameterType="PurchaseDto">
+      INSERT INTO Purchase (
+          purchaseId,
+          productId,
+          codeBId,
+          createdAt,
+          quantity,
+          notes
+      ) VALUES (
+          PURCHASE_SEQ.NEXTVAL,
+          #{productId},
+          #{codeBId},
+          COALESCE(#{createdAt}, CURRENT_TIMESTAMP),
+          #{quantity},
+          #{notes, jdbcType=VARCHAR}
+      )
+  	</insert>
+
+	
+	<insert id="insertStockAdjustment" parameterType="StockAdjustmentDto">
+      INSERT INTO StockAdjustment (
+          adjustmentId,
+          productId,
+          codeBId,
+          createdAt,
+          quantity,
+          notes
+      ) VALUES (
+          STOCK_ADJUSTMENT_SEQ.NEXTVAL,
+          #{productId},
+          #{codeBId},
+          COALESCE(#{createdAt}, CURRENT_TIMESTAMP),
+          #{quantity},
+          #{notes}
+      )
+  	</insert>
+	
+</mapper>

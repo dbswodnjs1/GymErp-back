@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="SalesItemMapper">
+
+	<!-- 공통 WHERE -->
+	<sql id="baseWhereProduct">
+		<where>
+			<!-- 기간 -->
+			<if test="startDate != null and startDate != ''">
+				AND si.createdAt &gt;= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND si.createdAt &lt;= TO_DATE(#{endDate} || ' 23:59:59', 'YYYY-MM-DD
+				HH24:MI:SS')
+			</if>
+
+			<!-- 카테고리 -->
+			<if test="categoryIds != null and categoryIds.size() &gt; 0">
+				AND p.codeBId IN
+				<foreach collection="categoryIds" item="cid" open="("
+					separator="," close=")">
+					#{cid}
+				</foreach>
+			</if>
+			<if test="categoryName != null and categoryName != ''">
+				AND cb.name = #{categoryName}
+			</if>
+
+			<!-- 직원(사번/이메일) -->
+			<if test="empNum != null and empNum != '' and empNum != 0">
+				AND si.empNum = #{empNum}
+			</if>
+			<if test="empEmail != null and empEmail != ''">
+				AND e.empEmail LIKE '%' || #{empEmail} || '%'
+			</if>
+
+			<!-- 상품명 키워드 -->
+			<if test="productNameKeyword != null and productNameKeyword != ''">
+				AND p.name LIKE '%' || #{productNameKeyword} || '%'
+			</if>
+
+			AND si.status = 'ACTIVE'
+		</where>
+	</sql>
+
+	<!-- 카운트 -->
+	<select id="selectSalesItemCount" parameterType="map"
+		resultType="int">
+		SELECT COUNT(1)
+		FROM sales_item si
+		JOIN product p ON si.productId = p.productId
+		JOIN codeB cb ON p.codeBId = cb.codeBId
+		JOIN employee e ON si.empNum = e.empNum
+		<include refid="baseWhereProduct" />
+	</select>
+
+	<!-- 목록 -->
+	<select id="selectAllSalesItems" parameterType="map"
+		resultType="com.example.gymerp.dto.SalesItemDto">
+		SELECT *
+		FROM (
+		SELECT
+		si.itemSalesId,
+		si.productId,
+		p.name AS productName,
+		cb.name AS categoryName,
+		si.productType,
+		si.empNum,
+		e.empEmail AS empEmail,      <!-- ✅ 판매자 이메일 -->
+		si.quantity,
+		si.unitPrice,
+		si.totalAmount,
+		si.status,
+		si.createdAt,
+		si.updatedAt,
+		ROW_NUMBER() OVER (ORDER BY si.itemSalesId DESC) AS rn
+		FROM sales_item si
+		JOIN product p ON si.productId = p.productId
+		JOIN codeB cb ON p.codeBId = cb.codeBId
+		JOIN employee e ON si.empNum = e.empNum
+		<include refid="baseWhereProduct" />
+		)
+		WHERE rn BETWEEN #{startRow} AND #{endRow}
+	</select>
+
+	<!-- 단건 상세 -->
+	<select id="selectSalesItemById" parameterType="long"
+		resultType="com.example.gymerp.dto.SalesItemDto">
+		SELECT
+		si.itemSalesId,
+		si.productId,
+		p.name AS productName,
+		cb.name AS categoryName,
+		si.productType,
+		si.empNum,
+		e.empEmail AS empEmail,        <!-- ✅ 판매자 이메일 -->
+		si.quantity,
+		si.unitPrice,
+		si.totalAmount,
+		si.status,
+		si.createdAt,
+		si.updatedAt
+		FROM sales_item si
+		JOIN product p ON si.productId = p.productId
+		JOIN codeB cb ON p.codeBId = cb.codeBId
+		JOIN employee e ON si.empNum = e.empNum
+		WHERE si.itemSalesId = #{value}
+	</select>
+
+	<!-- 조정용 조회 -->
+	<select id="selectSalesItemForAdjustment" parameterType="long"
+		resultType="map">
+		SELECT
+		si.productId,
+		si.quantity AS oldQuantity,
+		p.codeBId AS codeBId,
+		si.status
+		FROM sales_item si
+		JOIN product p ON si.productId = p.productId
+		WHERE si.itemSalesId = #{value}
+	</select>
+
+	<!-- 등록 -->
+	<insert id="insertSalesItem"
+		parameterType="com.example.gymerp.dto.SalesItemDto">
+		<selectKey keyProperty="itemSalesId" resultType="long"
+			order="BEFORE">
+			SELECT SALES_ITEM_SEQ.NEXTVAL FROM DUAL
+		</selectKey>
+		INSERT INTO sales_item (
+		itemSalesId, productId, productName,
+		empNum, quantity, unitPrice, totalAmount,
+		productType, status, createdAt, updatedAt
+		) VALUES (
+		#{itemSalesId}, #{productId}, #{productName},
+		#{empNum}, #{quantity}, #{unitPrice, jdbcType=DECIMAL}, #{totalAmount,
+		jdbcType=DECIMAL},
+		#{productType}, #{status}, #{createdAt}, #{updatedAt}
+		)
+	</insert>
+
+	<!-- 수정 -->
+	<update id="updateSalesItem"
+		parameterType="com.example.gymerp.dto.SalesItemDto">
+		UPDATE sales_item
+		<set>
+			<if test="productId != null and productId != 0">
+				productId = #{productId},
+			</if>
+			<if test="productName != null">
+				productName = #{productName},
+			</if>
+			<if test="empNum != null and empNum != 0">
+				empNum = #{empNum},
+			</if>
+			<!-- quantity는 0 허용 -->
+			<if test="quantity != null">
+				quantity = #{quantity},
+			</if>
+			<if test="unitPrice != null">
+				unitPrice = #{unitPrice, jdbcType=DECIMAL},
+			</if>
+			<if test="totalAmount != null">
+				totalAmount = #{totalAmount, jdbcType=DECIMAL},
+			</if>
+			<if test="productType != null">
+				productType = #{productType},
+			</if>
+			<if test="status != null">
+				status = #{status},
+			</if>
+			updatedAt = SYSDATE
+		</set>
+		WHERE itemSalesId = #{itemSalesId}
+	</update>
+
+	<!-- 환원용 구매 등록 -->
+	<insert id="insertPurchaseForRefund" parameterType="map">
+		<selectKey keyProperty="purchaseId" resultType="long"
+			order="BEFORE">
+			SELECT PURCHASE_SEQ.NEXTVAL FROM DUAL
+		</selectKey>
+		INSERT INTO purchase (
+		purchaseId, productId, codeBId, createdAt, quantity, notes
+		) VALUES (
+		#{purchaseId},
+		#{productId},
+		#{codeBId},
+		SYSDATE,
+		#{quantity},
+		'판매 취소로 인한 재고 환원'
+		)
+	</insert>
+
+	<!-- 소프트 삭제 -->
+	<update id="deleteSalesItem" parameterType="long">
+		UPDATE sales_item
+		SET status = 'DELETED', updatedAt = SYSDATE
+		WHERE itemSalesId = #{value}
+	</update>
+
+	<!-- 분석 -->
+	<select id="selectItemSalesAnalytics" parameterType="map"
+		resultType="map">
+		SELECT
+		si.productId,
+		p.name AS productName,
+		SUM(si.quantity) AS totalQuantity,
+		SUM(si.totalAmount) AS totalSalesAmount
+		FROM sales_item si
+		JOIN product p ON si.productId = p.productId
+		<include refid="baseWhereProduct" />
+		GROUP BY si.productId, p.name
+		ORDER BY totalSalesAmount DESC
+	</select>
+
+</mapper>

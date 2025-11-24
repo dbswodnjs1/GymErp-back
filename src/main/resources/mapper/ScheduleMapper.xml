@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="ScheduleMapper">
+
+  <!-- ====================== 공통 ResultMap ====================== -->
+  <resultMap id="ScheduleMap" type="com.example.gymerp.dto.ScheduleDto">
+    <id property="shNum" column="shNum"/>
+    <result property="empNum" column="empNum"/>
+    <result property="codeBid" column="codeBid"/>
+    <result property="startTime" column="startTime"/>
+    <result property="endTime" column="endTime"/>
+    <result property="memo" column="memo"/>
+    <result property="codeBName" column="codeBName"/>
+    <result property="empName" column="empName"/>
+    <result property="memName" column="memName"/>
+    <result property="memNum" column="memNum"/>
+  </resultMap>
+
+  <!-- ====================== 전체 일정 조회 ====================== -->
+  <select id="selectAll" resultMap="ScheduleMap">
+    SELECT
+      s.shNum, s.empNum, s.codeBid, s.startTime, s.endTime, s.memo,
+      e.empName, cb.name AS codeBName, m.memName, s.memNum
+    FROM SCHEDULE s
+	  JOIN Employee e ON s.empNum = e.empNum
+	  LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
+	  LEFT JOIN Member m ON s.memNum = m.memNum
+    ORDER BY s.startTime ASC
+  </select>
+
+  <!-- ====================== 단건 조회 ====================== -->
+  <select id="selectByShNum" parameterType="int" resultMap="ScheduleMap">
+	  SELECT 
+	    s.shNum,
+	    s.empNum,
+	    s.codeBid,
+	    s.startTime,
+	    s.endTime,
+	    s.memo,
+	    e.empName,
+	    cb.name AS codeBName,
+	    s.memNum,       
+	    r.regNum AS regId,   
+	    m.memName
+	  FROM SCHEDULE s
+	    JOIN Employee e ON s.empNum = e.empNum
+	    LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
+	    LEFT JOIN Registration r ON s.shNum = r.shNum
+	    LEFT JOIN Member m ON s.memNum = m.memNum
+	  WHERE s.shNum = #{shNum}
+	</select>
+	
+	  <!-- ====================== 직원별 일정 조회 ====================== -->
+  <select id="selectByEmpNum" parameterType="int" resultMap="ScheduleMap">
+    SELECT
+      s.shNum, s.empNum, s.codeBid, s.startTime, s.endTime, s.memo,
+      e.empName, cb.name AS codeBName, m.memName, s.memNum
+    FROM SCHEDULE s
+	  JOIN Employee e ON s.empNum = e.empNum
+	  LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
+	  LEFT JOIN Member m ON s.memNum = m.memNum
+    WHERE s.empNum = #{empNum}
+    ORDER BY s.startTime ASC
+  </select>
+  <!-- ====================== 날짜 범위 조회 ====================== -->
+  <select id="selectByDateRange" resultMap="ScheduleMap">
+    SELECT
+      s.shNum, s.empNum, s.codeBid, s.startTime, s.endTime, s.memo,
+      e.empName, cb.name AS codeBName, m.memName, s.memNum
+    FROM SCHEDULE s
+	  JOIN Employee e ON s.empNum = e.empNum
+	  LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
+	  LEFT JOIN Member m ON s.memNum = m.memNum
+    WHERE s.startTime BETWEEN #{startDate} AND #{endDate}
+    ORDER BY s.startTime ASC
+  </select>
+
+  <!-- ====================== 일정 등록 ====================== -->
+  <insert id="insert" parameterType="com.example.gymerp.dto.ScheduleDto">
+    <selectKey keyProperty="shNum" resultType="long" order="BEFORE">
+      SELECT SCHEDULE_SEQ.NEXTVAL FROM DUAL
+    </selectKey>
+    INSERT INTO SCHEDULE (
+      SHNUM, EMPNUM, CODEBID, STARTTIME, ENDTIME, MEMO
+    ) VALUES (
+      #{shNum},
+      #{empNum},
+      #{codeBid, jdbcType=VARCHAR},
+      #{startTime, jdbcType=TIMESTAMP},
+      #{endTime, jdbcType=TIMESTAMP},
+      #{memo, jdbcType=VARCHAR}
+    )
+  </insert>
+
+  <!-- ====================== 일정 수정 ====================== -->
+  <update id="update" parameterType="com.example.gymerp.dto.ScheduleDto">
+    UPDATE SCHEDULE
+    SET
+      empNum   = #{empNum},
+      codeBid  = #{codeBid, jdbcType=VARCHAR},
+      startTime= #{startTime},
+      endTime  = #{endTime},
+      memo     = #{memo}
+    WHERE shNum = #{shNum}
+  </update>
+
+  <!-- ====================== 일정 삭제 ====================== -->
+  <delete id="delete" parameterType="int">
+    DELETE FROM SCHEDULE WHERE shNum = #{shNum}
+  </delete>
+  
+  <!-- 해당 직원의 휴가가 지정 구간과 겹치는지 카운트 -->
+  <select id="countVacationOverlap" parameterType="map" resultType="int">
+    SELECT COUNT(*)
+    FROM SCHEDULE
+    WHERE empNum = #{empNum}
+      AND codeBid = 'VACATION'
+      AND startTime &lt;= #{endTime}
+      AND endTime   &gt;= #{startTime}
+  </select>
+
+  <!-- (수정용) 자기 자신 shNum을 제외하고 겹치는지 카운트 -->
+  <select id="countVacationOverlapExcludingSelf" parameterType="map" resultType="int">
+    SELECT COUNT(*)
+    FROM SCHEDULE
+    WHERE empNum = #{empNum}
+      AND codeBid = 'VACATION'
+      AND shNum  &lt;&gt; #{shNum}
+      AND startTime &lt;= #{endTime}
+      AND endTime   &gt;= #{startTime}
+  </select>
+
+  <!-- ===================== ⬇ 관리자 전용 검색(11g 페이징) ⬇ ===================== -->
+  <select id="selectByFiltersForAdmin" parameterType="map" resultMap="ScheduleMap">
+    SELECT *
+    FROM (
+      SELECT
+        s.shNum, s.empNum, s.codeBid, s.startTime, s.endTime, s.memo, s.memNum,
+        e.empName,
+        cb.name AS codeBName,
+        m.memName,
+        ROW_NUMBER() OVER (ORDER BY s.startTime DESC) AS rn
+      FROM SCHEDULE s
+		  JOIN Employee e ON s.empNum = e.empNum
+		  LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
+		  LEFT JOIN Member m ON s.memNum = m.memNum
+      <where>	
+        <if test="codeBid != null and codeBid != ''">
+          s.codeBid = #{codeBid}
+        </if>
+        <if test="keyword != null and keyword != ''">
+          <if test="codeBid != null and codeBid != ''">AND</if>
+          (
+            LOWER(e.empName)           LIKE '%' || LOWER(#{keyword}) || '%'
+            OR LOWER(NVL(m.memName,''))LIKE '%' || LOWER(#{keyword}) || '%'
+            OR LOWER(NVL(s.memo,''))   LIKE '%' || LOWER(#{keyword}) || '%'
+          )
+        </if>
+      </where>
+    )
+    WHERE rn BETWEEN #{offset,javaType=int} + 1
+                AND #{offset,javaType=int} + #{limit,javaType=int}
+  </select>
+
+
+
+  <select id="countByFiltersForAdmin" parameterType="map" resultType="int">
+    SELECT COUNT(*)
+    FROM SCHEDULE s
+      JOIN Employee e ON s.empNum = e.empNum
+      LEFT JOIN CodeB cb ON s.codeBid = cb.codeBid
+      LEFT JOIN Member m ON s.memNum = m.memNum
+    <where>
+      <if test="codeBid != null and codeBid != ''">
+        s.codeBid = #{codeBid}
+      </if>
+      <if test="keyword != null and keyword != ''">
+        <if test="codeBid != null and codeBid != ''">AND</if>
+        (
+          LOWER(e.empName)           LIKE '%' || LOWER(#{keyword}) || '%'
+          OR LOWER(NVL(m.memName,''))LIKE '%' || LOWER(#{keyword}) || '%'
+          OR LOWER(NVL(s.memo,''))   LIKE '%' || LOWER(#{keyword}) || '%'
+        )
+      </if>
+    </where>
+  </select>
+ 
+ <!-- ===================== ⬇ 추가 ⬇ ========================================================================== --> 
+ 
+  <!-- ===================== ⬇ 회원권 유효 확인 ⬇ ===================== -->
+  
+	<!-- 일정 시간이 정책에 따라 겹치지 않을 때만 INSERT -->
+	<insert id="insertIfNoOverlap" parameterType="com.example.gymerp.dto.ScheduleDto">
+	  <selectKey keyProperty="shNum" resultType="long" order="BEFORE">
+	    SELECT SCHEDULE_SEQ.NEXTVAL FROM DUAL
+	  </selectKey>
+	
+	  <![CDATA[
+	  INSERT INTO SCHEDULE (
+	    SHNUM, EMPNUM, CODEBID, STARTTIME, ENDTIME, MEMNUM, MEMO
+	  )
+	  SELECT
+	    #{shNum,      jdbcType=NUMERIC},
+	    #{empNum,     jdbcType=NUMERIC},
+	    #{codeBid,    jdbcType=VARCHAR},
+	    #{startTime,  jdbcType=TIMESTAMP},
+	    #{endTime,    jdbcType=TIMESTAMP},
+	    #{memNum,     jdbcType=NUMERIC},
+	    #{memo,       jdbcType=VARCHAR}
+	  FROM DUAL
+	  WHERE NOT EXISTS (
+	    SELECT 1
+	    FROM SCHEDULE s
+	    WHERE s.EMPNUM = #{empNum, jdbcType=NUMERIC}
+	      AND #{startTime, jdbcType=TIMESTAMP} < s.ENDTIME
+	      AND s.STARTTIME < #{endTime, jdbcType=TIMESTAMP}
+	      AND (
+	            /* PT는 PT/VACATION과만 충돌 */
+	            (#{codeBid, jdbcType=VARCHAR} = 'SCHEDULE-PT' AND s.CODEBID IN ('SCHEDULE-PT','VACATION'))
+	         OR /* ETC는 VACATION과만 충돌 */
+	            (#{codeBid, jdbcType=VARCHAR} LIKE 'ETC-%'       AND s.CODEBID = 'VACATION')
+	         OR /* VACATION은 모든 코드와 충돌 */
+	            (#{codeBid, jdbcType=VARCHAR} = 'VACATION')
+	          )
+	  )
+	  ]]>
+
+	</insert>
+
+	
+	
+	<!-- 일정 시간이 정책에 따라 겹치지 않을 때만 UPDATE -->
+	<update id="updateIfNoOverlap" parameterType="com.example.gymerp.dto.ScheduleDto">
+	   <![CDATA[
+  UPDATE SCHEDULE s
+     SET s.EMPNUM    = #{empNum,    jdbcType=NUMERIC}
+       , s.CODEBID   = #{codeBid,   jdbcType=VARCHAR}
+       , s.STARTTIME = #{startTime, jdbcType=TIMESTAMP}
+       , s.ENDTIME   = #{endTime,   jdbcType=TIMESTAMP}
+       , s.MEMNUM    = #{memNum,    jdbcType=NUMERIC}
+       , s.MEMO      = #{memo,      jdbcType=VARCHAR}
+   WHERE s.SHNUM = #{shNum, jdbcType=NUMERIC}
+     AND NOT EXISTS (
+           SELECT 1
+             FROM SCHEDULE x
+            WHERE x.EMPNUM = #{empNum, jdbcType=NUMERIC}
+              AND x.SHNUM <> #{shNum, jdbcType=NUMERIC}  -- 자기 자신 제외
+              AND #{startTime, jdbcType=TIMESTAMP} < x.ENDTIME
+              AND x.STARTTIME < #{endTime,   jdbcType=TIMESTAMP}
+              AND (
+                    /* PT는 PT/VACATION과 충돌 */
+                    (#{codeBid, jdbcType=VARCHAR} = 'SCHEDULE-PT' AND x.CODEBID IN ('SCHEDULE-PT','VACATION'))
+                 OR /* ETC는 VACATION과만 충돌 */
+                    (#{codeBid, jdbcType=VARCHAR} LIKE 'ETC-%'     AND x.CODEBID = 'VACATION')
+                 OR /* VACATION은 모두와 충돌 */
+                    (#{codeBid, jdbcType=VARCHAR} = 'VACATION')
+                  )
+         )
+  ]]>
+	</update>
+	
+	<!-- ScheduleMapper.xml : PT 전용 업데이트 (겹침 + 회원권 범위) -->
+<update id="updateIfNoOverlapAndVoucherOK" parameterType="com.example.gymerp.dto.ScheduleDto">
+    <![CDATA[
+  UPDATE SCHEDULE s
+     SET s.EMPNUM    = #{empNum,    jdbcType=NUMERIC}
+       , s.CODEBID   = #{codeBid,   jdbcType=VARCHAR}
+       , s.STARTTIME = #{startTime, jdbcType=TIMESTAMP}
+       , s.ENDTIME   = #{endTime,   jdbcType=TIMESTAMP}
+       , s.MEMNUM    = #{memNum,    jdbcType=NUMERIC}
+       , s.MEMO      = #{memo,      jdbcType=VARCHAR}
+   WHERE s.SHNUM = #{shNum, jdbcType=NUMERIC}
+     AND NOT EXISTS (
+           SELECT 1
+             FROM SCHEDULE x
+            WHERE x.EMPNUM = #{empNum, jdbcType=NUMERIC}
+              AND x.SHNUM <> #{shNum, jdbcType=NUMERIC}
+              AND #{startTime, jdbcType=TIMESTAMP} < x.ENDTIME
+              AND x.STARTTIME < #{endTime,   jdbcType=TIMESTAMP}
+              AND (
+                    /* 현재 수정 대상이 PT 라고 전제 */
+                    (#{codeBid, jdbcType=VARCHAR} = 'SCHEDULE-PT' AND x.CODEBID IN ('SCHEDULE-PT','VACATION'))
+                  )
+         )
+     AND EXISTS (
+           SELECT 1
+             FROM VOUCHER_LOG v
+            WHERE v.MEMNUM = #{memNum, jdbcType=NUMERIC}
+              -- 날짜 단위 비교면 TRUNC 유지, 시간까지 엄격히면 TRUNC 제거
+              AND TRUNC(#{startTime, jdbcType=TIMESTAMP}) >= TRUNC(v.STARTDATE)
+              AND TRUNC(#{endTime,   jdbcType=TIMESTAMP}) <= TRUNC(v.ENDDATE)
+         )
+  ]]>
+</update>
+
+
+<!-- ======================================================================================= --> 
+
+</mapper>

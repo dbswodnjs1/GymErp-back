@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- Dao에서 "PostMapper.*"로 부르므로 여기 꼭 PostMapper -->
+<mapper namespace="PostMapper">
+
+  <!-- 목록: POSTWRITER가 문자여도 안전하게 조인 (ORA-01722 회피) -->
+  <select id="selectAll" resultType="PostDto">
+    SELECT
+      p.POSTID        AS postId,
+      p.POSTTITLE     AS postTitle,
+      p.POSTCONTENT   AS postContent,
+      p.POSTWRITER    AS postWriter,
+      p.POSTPINNED    AS postPinned,
+      p.POSTVIEWCNT   AS postViewCnt,
+      p.POSTCREATEDAT AS postCreatedAt,
+      p.POSTUPDATEDAT AS postUpdatedAt,
+      e.EMPNAME       AS writerName
+    FROM (
+      SELECT
+        P.*,
+        CASE WHEN REGEXP_LIKE(P.POSTWRITER, '^[0-9]+$')
+             THEN TO_NUMBER(P.POSTWRITER)
+        END AS POSTWRITER_NUM
+      FROM POST P
+    ) p
+    LEFT JOIN EMPLOYEE e
+      ON e.EMPNUM = p.POSTWRITER_NUM
+    ORDER BY p.POSTPINNED DESC, p.POSTID DESC
+  </select>
+
+  <!-- 상세: id = get (지금 오류난 그 이름) -->
+  <select id="get" parameterType="int" resultType="PostDto">
+    SELECT
+      p.POSTID        AS postId,
+      p.POSTTITLE     AS postTitle,
+      p.POSTCONTENT   AS postContent,
+      p.POSTWRITER    AS postWriter,
+      p.POSTPINNED    AS postPinned,
+      p.POSTVIEWCNT   AS postViewCnt,
+      p.POSTCREATEDAT AS postCreatedAt,
+      p.POSTUPDATEDAT AS postUpdatedAt,
+      e.EMPNAME       AS writerName
+    FROM (
+      SELECT
+        P.*,
+        CASE WHEN REGEXP_LIKE(P.POSTWRITER, '^[0-9]+$')
+             THEN TO_NUMBER(P.POSTWRITER)
+        END AS POSTWRITER_NUM
+      FROM POST P
+    ) p
+    LEFT JOIN EMPLOYEE e
+      ON e.EMPNUM = p.POSTWRITER_NUM
+    WHERE p.POSTID = #{postId}
+  </select>
+
+  <!-- 조회수 +1 -->
+  <update id="incView" parameterType="int">
+  		UPDATE POST
+  		SET POSTVIEWCNT = POSTVIEWCNT + 1
+  		WHERE POSTID = #{postId}
+  </update>
+
+  <!-- 등록: Oracle 시퀀스 사용 -->
+  <insert id="insert" parameterType="PostDto" useGeneratedKeys="false">
+    <selectKey keyProperty="postId" resultType="int" order="BEFORE">
+      SELECT POST_SEQ.NEXTVAL FROM DUAL
+    </selectKey>
+    INSERT INTO POST (
+      POSTID, POSTTITLE, POSTCONTENT, POSTWRITER, POSTPINNED,
+      POSTVIEWCNT, POSTCREATEDAT, POSTUPDATEDAT
+    ) VALUES (
+      #{postId},
+      #{postTitle},
+      #{postContent},
+      #{postWriter},       <!-- 문자열로 저장해도 OK (사번 숫자면 "101" 형태) -->
+      #{postPinned},
+      0,
+      SYSTIMESTAMP,
+      SYSTIMESTAMP
+    )
+  </insert>
+
+  <!-- 수정 -->
+  <update id="update" parameterType="PostDto">
+    UPDATE POST
+    SET
+      POSTTITLE     = #{postTitle},
+      POSTCONTENT   = #{postContent},
+      POSTWRITER    = #{postWriter},
+      POSTPINNED    = #{postPinned},
+      POSTUPDATEDAT = SYSTIMESTAMP
+    WHERE POSTID = #{postId}
+  </update>
+
+  <!-- 삭제 -->
+  <delete id="delete" parameterType="int">
+    DELETE FROM POST
+    WHERE POSTID = #{postId}
+  </delete>
+
+</mapper>

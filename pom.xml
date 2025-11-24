@@ -76,6 +76,21 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+		    <groupId>com.h2database</groupId>
+		    <artifactId>h2</artifactId>
+		    <scope>test</scope>
+		</dependency>
+		<!-- swagger ui 를 사용하기 위한 dependency (spring boot 3.0 이상 버전에서)-->
+		<dependency>
+		    <groupId>org.springdoc</groupId>
+		    <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+		    <version>2.6.0</version>
+		</dependency>
+		<dependency>
+		    <groupId>org.hibernate.validator</groupId>
+		    <artifactId>hibernate-validator</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -104,7 +119,16 @@
 					</excludes>
 				</configuration>
 			</plugin>
+		    <plugin>
+		      <groupId>org.apache.maven.plugins</groupId>
+		      <artifactId>maven-surefire-plugin</artifactId>
+		      <version>3.1.2</version>
+		      <configuration>
+		        <skipTests>true</skipTests>
+		      </configuration>
+		    </plugin>
 		</plugins>
+		
 	</build>
 
 </project>

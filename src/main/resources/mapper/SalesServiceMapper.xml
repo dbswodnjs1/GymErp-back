@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="SalesServiceMapper">
+
+    <!-- ===============================
+         [1. 조회]
+    =============================== -->
+
+    <!-- 전체 서비스 판매 내역 조회 -->
+    <select id="selectAllSalesServices" resultType="SalesService">
+        SELECT *
+        FROM sales_service
+        WHERE status = 'ACTIVE'
+        ORDER BY createdAt DESC
+    </select>
+
+    <!-- 단일 서비스 판매 내역 조회 -->
+    <select id="selectSalesServiceById" parameterType="long" resultType="SalesService">
+        SELECT *
+        FROM sales_service
+        WHERE serviceSalesId = #{serviceSalesId}
+    </select>
+
+
+    <!-- ===============================
+         [2. 등록 / 수정 / 삭제]
+    =============================== -->
+
+    <!-- 서비스 판매 등록 -->
+    <insert id="insertSalesService" parameterType="SalesService">
+        <selectKey keyProperty="serviceSalesId" resultType="long" order="BEFORE">
+            SELECT sales_service_seq.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO sales_service (
+            serviceSalesId, serviceId, serviceName, empNum, memNum,
+            baseCount, actualCount, discount, baseAmount, actualAmount,
+            serviceType, refundId, status, createdAt, updatedAt
+        ) VALUES (
+            #{serviceSalesId},
+            #{serviceId},
+            #{serviceName},
+            #{empNum},
+            #{memNum},
+            #{baseCount},
+            #{actualCount},
+            #{discount},
+            #{baseAmount},
+            #{actualAmount},
+            #{serviceType},
+            NULL,               <!-- refundId는 PT_LOG 생성 후 업데이트됨 -->
+            'ACTIVE',
+            SYSDATE,
+            SYSDATE
+        )
+    </insert>
+
+    <!-- PT_LOG 생성 후 refundId 연동 -->
+    <update id="updateRefundIdBySalesId" parameterType="map">
+        UPDATE sales_service
+        SET refundId = #{refundId},
+            updatedAt = SYSDATE
+        WHERE serviceSalesId = #{serviceSalesId}
+          AND status = 'ACTIVE'
+    </update>
+
+    <!-- 서비스 판매 수정 -->
+    <update id="updateSalesService" parameterType="SalesService">
+        UPDATE sales_service
+        SET
+            empNum        = #{empNum},
+            serviceName   = #{serviceName},
+            baseCount     = #{baseCount},
+            actualCount   = #{actualCount},
+            discount      = #{discount},
+            baseAmount    = #{baseAmount},
+            actualAmount  = #{actualAmount},
+            updatedAt     = SYSDATE
+        WHERE serviceSalesId = #{serviceSalesId}
+          AND status = 'ACTIVE'
+    </update>
+
+    <!-- 서비스 판매 논리삭제 -->
+    <update id="deleteSalesService" parameterType="long">
+        UPDATE sales_service
+        SET status = 'DELETED',
+            updatedAt = SYSDATE
+        WHERE serviceSalesId = #{serviceSalesId}
+          AND status = 'ACTIVE'
+    </update>
+
+
+    <!-- ===============================
+         [3. 서비스 판매 내역 조회 (필터 + 스크롤용)]
+         ※ 총 4개 필터: 기간 / 품목명 / 회원 / 직원
+    =============================== -->
+
+    <!-- 필터 기본 WHERE절 정의 -->
+    <sql id="baseWhereService">
+        <where>
+            <!-- 기간 필터 -->
+            <if test="startDate != null and startDate != ''">
+                AND ss.createdAt &gt;= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND ss.createdAt &lt;= TO_DATE(#{endDate} || ' 23:59:59', 'YYYY-MM-DD HH24:MI:SS')
+            </if>
+
+            <!-- 품목명 필터 -->
+            <if test="serviceNameKeyword != null and serviceNameKeyword != ''">
+                AND UPPER(ss.serviceName) LIKE '%' || UPPER(#{serviceNameKeyword}) || '%'
+            </if>
+
+            <!-- 회원 필터 -->
+            <if test="memNum != null and memNum != ''">
+                AND ss.memNum = #{memNum}
+            </if>
+
+            <!-- 직원 필터 -->
+            <if test="empNum != null and empNum != ''">
+                AND ss.empNum = #{empNum}
+            </if>
+
+            AND ss.status = 'ACTIVE'
+        </where>
+    </sql>
+
+    <!-- 총 개수 조회 -->
+    <select id="selectSalesServiceCount" parameterType="map" resultType="int">
+        SELECT COUNT(1)
+        FROM sales_service ss
+        JOIN employee e ON ss.empNum = e.empNum
+        <include refid="baseWhereService"/>
+    </select>
+
+    <!-- 서비스 판매 내역 조회 (페이징 적용) -->
+    <select id="selectPagedSalesServices" parameterType="map" resultType="map">
+        SELECT *
+        FROM (
+            SELECT
+                ss.SERVICESALESID     AS "serviceSalesId",
+                ss.SERVICEID          AS "serviceId",
+                ss.SERVICENAME        AS "serviceName",
+                ss.SERVICETYPE        AS "serviceType",
+                ss.EMPNUM             AS "empNum",
+                e.EMPNAME             AS "empName",   <!-- 직원명 alias -->
+                ss.MEMNUM             AS "memNum",
+                m.MEMNAME             AS "memName",   <!-- 회원명 alias -->
+                ss.BASECOUNT          AS "baseCount",
+                ss.ACTUALCOUNT        AS "actualCount",
+                ss.DISCOUNT           AS "discount",
+                ss.BASEAMOUNT         AS "baseAmount",
+                ss.ACTUALAMOUNT       AS "actualAmount",
+                ss.STATUS             AS "status",
+                ss.CREATEDAT          AS "createdAt",
+                ss.UPDATEDAT          AS "updatedAt",
+                ROW_NUMBER() OVER (ORDER BY ss.SERVICESALESID DESC) AS rn
+            FROM SALES_SERVICE ss
+            LEFT JOIN EMPLOYEE e ON ss.EMPNUM = e.EMPNUM
+            LEFT JOIN MEMBER  m ON ss.MEMNUM = m.MEMNUM
+            <include refid="baseWhereService"/>
+        )
+        WHERE rn BETWEEN #{startRow} AND #{endRow}
+    </select>
+
+</mapper>

@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="EmployeeMapper">
+
+    <!-- 직원 전체 조회 -->
+    <select id="getAllEmp" resultType="EmpDto">
+        SELECT * 
+        FROM EMPLOYEE
+        ORDER BY EMPNUM DESC
+    </select>
+
+
+    <!-- 직원 상세 조회 -->
+    <select id="getEmpByNum" parameterType="int" resultType="EmpDto">
+        SELECT * 
+        FROM EMPLOYEE
+        WHERE EMPNUM = #{empNum}
+    </select>
+
+    <!-- 직원 등록: sequence 로 PK 발급 + 비번 포함 -->
+    <insert id="insertEmp" parameterType="EmpDto">
+    	<selectKey keyProperty="empNum" resultType="int" order="BEFORE">
+    		SELECT employee_seq.NEXTVAL FROM DUAL
+    	</selectKey>
+        INSERT INTO EMPLOYEE (
+            EMPNUM, EMPNAME, GENDER, EMPADDRESS, EMPBIRTH,
+            EMPPHONE, EMPEMAIL, PASSWORD, HIREDATE, FIREDATE,
+            PROFILEIMAGE, EMPMEMO, ROLE
+        ) VALUES (
+                #{empNum, jdbcType=NUMERIC},
+				#{empName, jdbcType=VARCHAR},
+				#{gender, jdbcType=VARCHAR},
+				#{empAddress, jdbcType=VARCHAR},
+				#{empBirth, jdbcType=DATE},
+				#{empPhone, jdbcType=VARCHAR},
+				#{empEmail, jdbcType=VARCHAR},
+				#{password, jdbcType=VARCHAR},
+				#{hireDate, jdbcType=DATE},
+				#{fireDate, jdbcType=DATE},
+				#{profileImage, jdbcType=VARCHAR},
+				#{empMemo, jdbcType=VARCHAR},
+				#{role, jdbcType=VARCHAR}
+        )
+    </insert>
+
+	<!-- 직원 수정 -->
+	<update id="updateEmp" parameterType="EmpDto">
+	    UPDATE EMPLOYEE
+	    SET 
+	        EMPNAME = #{empName, jdbcType=VARCHAR},
+	        GENDER = #{gender, jdbcType=VARCHAR},
+	        EMPADDRESS = #{empAddress, jdbcType=VARCHAR},
+	        EMPBIRTH = #{empBirth, jdbcType=DATE},
+	        EMPPHONE = #{empPhone, jdbcType=VARCHAR},
+	        EMPEMAIL = #{empEmail, jdbcType=VARCHAR},
+	        HIREDATE = #{hireDate, jdbcType=DATE},
+	        FIREDATE = #{fireDate, jdbcType=DATE},
+	        PROFILEIMAGE = #{profileImage, jdbcType=VARCHAR},
+	        EMPMEMO = #{empMemo, jdbcType=VARCHAR},
+	        ROLE = #{role, jdbcType=VARCHAR}
+	    WHERE EMPNUM = #{empNum}
+	</update>
+
+
+    <!-- 직원 삭제 -->
+    <delete id="deleteEmp" parameterType="int">
+        DELETE FROM EMPLOYEE WHERE EMPNUM = #{empNum}
+    </delete>
+
+
+    <!-- 직원 검색 -->
+    <select id="searchEmp" resultType="EmpDto">
+        SELECT *
+        FROM EMPLOYEE
+        <where>
+            <if test="filter == 'all'">
+                (EMPNAME LIKE '%' || #{keyword} || '%' 
+                 OR EMPEMAIL LIKE '%' || #{keyword} || '%')
+            </if>
+
+            <if test="filter == 'name'">
+                EMPNAME LIKE '%' || #{keyword} || '%'
+            </if>
+
+            <if test="filter == 'email'">
+                EMPEMAIL LIKE '%' || #{keyword} || '%'
+            </if>
+        </where>
+        ORDER BY EMPNUM DESC
+    </select>
+    
+    <!-- 로그인 전용: 이메일로 비번 포함 조회 -->
+    <resultMap type="EmpDto" id="empAuthMap">
+    	<id property="empNum" column="EMPNUM"/>
+    	<result property="empName" column="EMPNAME"/>
+    	<result property="empEmail" column="EMPEMAIL"/>
+    	<result property="password" column="PASSWORD"/>
+    	<result property="role" column="ROLE"/>
+    </resultMap>
+    
+    <select id="selectAuthByEmail" parameterType="string" resultMap="empAuthMap">
+    	SELECT EMPNUM, EMPNAME, EMPEMAIL, PASSWORD, ROLE
+    		FROM EMPLOYEE
+    	WHERE EMPEMAIL = #{empEmail}
+    </select>
+    
+    <!-- 비밀번호만 변경 -->
+    <update id="updatePassword">
+    	UPDATE EMPLOYEE
+    		SET PASSWORD = #{password}
+    	WHERE EMPNUM = #{empNum}
+    </update>
+    <!-- 비빈 해쉬 조회용 -->
+	<select id="selectPasswordHashByEmpNum" resultType="string">
+		SELECT PASSWORD
+			FROM EMPLOYEE
+		WHERE EMPNUM = #{empNum}
+	</select>
+
+	<!-- 직원 검색 + 페이징 -->
+	<select id="getEmpListPaged" resultType="EmpDto">
+	    SELECT *
+	    FROM (
+	        SELECT ROWNUM AS rnum, E.*
+	        FROM (
+	            SELECT 
+	                EMPNUM, EMPNAME, GENDER, EMPADDRESS,
+	                EMPBIRTH, EMPPHONE, EMPEMAIL, HIREDATE,
+	                FIREDATE, PROFILEIMAGE, EMPMEMO, ROLE
+	            FROM EMPLOYEE
+	            <where>
+	                <if test="type == 'all' and keyword != null and keyword != ''">
+	                    (EMPNAME LIKE '%' || #{keyword} || '%' 
+	                    OR EMPPHONE LIKE '%' || #{keyword} || '%')
+	                </if>
+	                <if test="type == 'name' and keyword != null and keyword != ''">
+	                    EMPNAME LIKE '%' || #{keyword} || '%'
+	                </if>
+	                <if test="type == 'phone' and keyword != null and keyword != ''">
+	                    EMPPHONE LIKE '%' || #{keyword} || '%'
+	                </if>
+	                <if test="status == 'ACTIVE'">
+			          FIREDATE IS NULL
+			        </if>
+			        <if test="status == 'RESIGNED'">
+			          FIREDATE IS NOT NULL
+			        </if>
+	            </where>
+	            ORDER BY EMPNUM DESC
+	        ) E
+	    )
+	    WHERE rnum BETWEEN #{start} AND #{end}
+	</select>
+	
+	
+	<!-- 전체 행 개수 (페이징용) -->
+	<select id="getTotalCount" resultType="int">
+	    SELECT COUNT(*) 
+	    FROM EMPLOYEE
+	    <where>
+	        <if test="type == 'all' and keyword != null and keyword != ''">
+	            (EMPNAME LIKE '%' || #{keyword} || '%' 
+	            OR EMPPHONE LIKE '%' || #{keyword} || '%')
+	        </if>
+	        <if test="type == 'name' and keyword != null and keyword != ''">
+	            EMPNAME LIKE '%' || #{keyword} || '%'
+	        </if>
+	        <if test="type == 'phone' and keyword != null and keyword != ''">
+	            EMPPHONE LIKE '%' || #{keyword} || '%'
+	        </if>
+	        <if test="status == 'ACTIVE'">
+		      FIREDATE IS NULL
+		    </if>
+		    <if test="status == 'RESIGNED'">
+		      FIREDATE IS NOT NULL
+		    </if>
+	    </where>
+	</select>
+		
+	<!-- 프로필 이미지 업로드 -->
+	<update id="updateProfileImage">
+	    UPDATE EMPLOYEE
+	    SET PROFILEIMAGE = #{fileName}
+	    WHERE EMPNUM = #{empNum}
+	</update>
+	
+	<!-- 이용내역 DB 관련 내용입니다.  -->
+    
+    <!-- 직원 이름 단건 조회 (로그용: empNum → empName 매핑) -->
+	<select id="selectEmployeeNameById" parameterType="int" resultType="string">
+		SELECT empName
+        FROM EMPLOYEE
+        WHERE empNum = #{empNum}
+	</select>
+	
+    <!-- 직원 존재 여부 확인 (판매 등록 시 유효성 검증용) -->
+    <select id="checkEmployeeExists" parameterType="int" resultType="int">
+        SELECT COUNT(*)
+        FROM EMPLOYEE
+        WHERE empNum = #{empNum}
+    </select>
+    
+    <!-- 이메일 중복 검사 -->
+    <select id="existsByEmail" parameterType="string" resultType="int">
+	  SELECT COUNT(*) FROM EMPLOYEE WHERE EMPEMAIL = #{email}
+	</select>
+	
+	<!-- 퇴사 처리: FIREDATE 찍고, 사유를 메모에 남김 -->
+	<update id="markResigned" parameterType="map">
+	  UPDATE EMPLOYEE
+	  SET
+	    FIREDATE = NVL(FIREDATE, SYSDATE),
+	    EMPMEMO = CASE
+	                WHEN #{reason} IS NOT NULL
+	                THEN NVL(EMPMEMO,'') || CHR(10) || '[퇴사사유] ' || #{reason}
+	                ELSE EMPMEMO
+	              END
+	  WHERE EMPNUM = #{empNum}
+	</update>
+	
+	<!-- 특정 직원의 회원 조회 조건:(잔여 PT > 0, 최소 1회 사용) -->
+	<select id="selectManagedMembersWithPtBySchedule" parameterType="int" resultType="com.example.gymerp.dto.MemberDto">
+	  WITH MINE AS (
+	    SELECT DISTINCT S.MEMNUM
+	    FROM SCHEDULE S
+	    WHERE S.EMPNUM = #{empNum}
+	      AND S.CODEBID IN ('PT','SCHEDULE-PT')
+	  ),
+	  AGG AS (
+	    SELECT
+	      MEMNUM,
+	      SUM(COUNTCHANGE) AS ptRemain,
+	      SUM(CASE WHEN COUNTCHANGE &lt; 0 THEN 1 ELSE 0 END) AS usedCount,
+	      MAX(CASE WHEN COUNTCHANGE &lt; 0 THEN CREATEDAT END) AS lastUseAt
+	    FROM PT_LOG
+	    GROUP BY MEMNUM
+	  )
+	  SELECT
+	    M.MEMNUM   AS memNum,
+	    M.MEMNAME  AS memName,
+	    M.MEMPHONE AS memPhone,
+	    M.MEMEMAIL AS memEmail,
+	    NVL(A.ptRemain,0)  AS ptRemain,
+	    NVL(A.usedCount,0) AS usedCount,
+	    A.lastUseAt        AS lastUseAt
+	  FROM MINE X
+	  JOIN MEMBER M ON M.MEMNUM = X.MEMNUM
+	  LEFT JOIN AGG A ON A.MEMNUM = X.MEMNUM
+	  WHERE NVL(A.ptRemain,0) > 0
+	    AND NVL(A.usedCount,0) >= 1
+	  ORDER BY M.MEMNAME
+	</select>
+</mapper>
