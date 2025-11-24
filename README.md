@@ -50,7 +50,7 @@
 - **배포 환경 구축**
   - Docker 기반 Oracle XE / Spring Boot 컨테이너 구성
   - Nginx 리버스 프록시 설정, `bonobono.online` 도메인 HTTPS 적용(Let's Encrypt)
-  - (헬스ERP: https://bonobono.online/ 배포, email/비밀번호: admin )
+  - 헬스ERP: https://bonobono.online/ 배포, email/비밀번호: admin 
 
 ---
 
