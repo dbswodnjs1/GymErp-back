@@ -46,7 +46,7 @@
   - 직원, 회원, 스케줄, PT등록, 회원권, PT_LOG 테이블 설 관계 정의
 - **비즈니스 로직 구현**
   - PT 일정 등록/수정/취소 API
-  - 회원권 유효성·남은 PT횟수 검증, 일정 겹침 검사, 휴가/공휴일 예외 처리
+  - 회원권 유효성·남은 PT횟수 검증, 일정 겹침 검사
 - **배포 환경 구축**
   - Docker 기반 Oracle XE / Spring Boot 컨테이너 구성
   - Nginx 리버스 프록시 설정, `bonobono.online` 도메인 HTTPS 적용(Let's Encrypt)
